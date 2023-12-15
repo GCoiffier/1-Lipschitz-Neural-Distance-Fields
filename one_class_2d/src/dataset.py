@@ -4,6 +4,7 @@ import mouette as M
 
 import torch
 from torch.utils.data import TensorDataset, DataLoader
+from torch.nn import functional as F
 
 class PointCloudDataset(M.Logger):
     def __init__(self, name, config):
@@ -14,6 +15,7 @@ class PointCloudDataset(M.Logger):
             "Ytest" : os.path.join("inputs", f"{name}_Ytest.npy")
         }
         self.config = config
+        self.domain = [-0.6,1.6]
         
         self.X_train_in = None
         self.X_train_out = None
@@ -23,6 +25,7 @@ class PointCloudDataset(M.Logger):
         
         self.test_loader = None
         self.load_dataset()
+
 
     def object_BB(self):
         if self.X_train_in is None : return None
@@ -61,10 +64,10 @@ class PointCloudDataset(M.Logger):
         self.train_loader_out = DataLoader(TensorDataset(self.X_train_out), batch_size=self.config.batch_size, shuffle=True)
 
         test_data = TensorDataset(self.X_test, self.Y_test)
-        self.test_loader = DataLoader(test_data, batch_size=self.config.batch_size)
+        self.test_loader = DataLoader(test_data, batch_size=self.config.test_batch_size)
         self.log("...Dataset loading complete")
 
-    def generate_complementary_distribution(self, X):
+    def generate_complementary_distribution_hole(self, X):
         n_pts = X.shape[0]
         EPS = 0.01
         xmin,ymin = np.amin(X, axis=0)
@@ -78,17 +81,21 @@ class PointCloudDataset(M.Logger):
         X2 = X2[I,:]
         return X2[:n_pts, :]
 
+    def generate_complementary_distribution(self, X):
+        n_pts = X.shape[0]
+        domain_width = self.domain[1] - self.domain[0]
+        X2 = domain_width*np.random.random((n_pts,2)) + self.domain[0]
+        return X2
 
-    def update_complementary_distribution(self, model, device, maxiter, level_set=0.):
+    def update_complementary_distribution(self, model, maxiter, level_set=-1e-3):
         """
         Perform Newton-Raphson iteration on the points to make them closer
 
         Args:
             sdf: pytorch model
         """
-        N_samples = self.X_train_out.shape[0]
-        learning_rate = 0.2 #*torch.rand((N_samples,1)).to(device)
         step_size = 1. / maxiter
+        learning_rate = 0.5
         Xt = self.X_train_out.clone()
 
         for step in range(maxiter):
@@ -105,13 +112,13 @@ class PointCloudDataset(M.Logger):
             grad = Xt.grad
             grad_norm_squared = torch.sum(grad**2, axis=1).reshape((5000,1))            
             grad = grad / (grad_norm_squared + 1e-8)
-
             target = -y + level_set
-            # TODO : prevent target from traversing the surface
+            # target = F.leaky_relu(-y + level_set, 0.2)
 
-            Xt = Xt + step_size * learning_rate * target * grad
+            Xt = Xt + learning_rate * step_size * target * grad
             
-            # TODO : Add clipping to domain
+            # clipping to domain
+            Xt = torch.clip(Xt, self.domain[0], self.domain[1])
 
         self.X_train_out = Xt.detach()
         self.train_loader_out = DataLoader(TensorDataset(self.X_train_out), batch_size=self.config.batch_size, shuffle=True)

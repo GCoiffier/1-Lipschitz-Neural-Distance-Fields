@@ -24,19 +24,21 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("dataset", type=str)
+    parser.add_argument("-n", "--n-iter", type=int, default=10, help="Number of iterations")
     parser.add_argument('-bs',"--batch-size", type=int, default=100, help="Batch size")
-    parser.add_argument("-ne", "--epochs", type=int, default=100, help="Number of epochs")
+    parser.add_argument("-ne", "--epochs", type=int, default=100, help="Number of epochs per iteration")
     parser.add_argument("-cpu", action="store_true")
     args = parser.parse_args()
 
     #### Config ####
     config = SimpleNamespace(
         device = get_device(args.cpu),
-        n_iter = 10,
+        n_iter = args.n_iter,
         batch_size = args.batch_size,
+        test_batch_size = 1000,
         epochs = args.epochs,
         loss_margin = 0.01, # m
-        loss_regul = 100., # lambda
+        loss_regul = 1000., # lambda
         optimizer = "adam",
         learning_rate = 0.001,
         NR_maxiter = 3,
@@ -50,7 +52,9 @@ if __name__ == "__main__":
     xrange,yrange = dataset.object_BB()
 
     #### Create model and setup trainer
-    model = DenseLipNetwork([(2,256), (256,256), (256,256), (256,1)]).to(config.device)
+    # model = DenseLipNetwork([(2,256), (256,256), (256,256), (256,1)]).to(config.device)
+    model = DenseLipNetwork([(2,256), (256,512), (512,256), (256,1)]).to(config.device)
+    # model = DenseLipNetwork([(2,512), (512,512), (512,512), (512,1)]).to(config.device)
 
     for n in range(config.n_iter):
         print("ITERATION", n+1)
@@ -61,4 +65,4 @@ if __name__ == "__main__":
 
         render_path = os.path.join(config.output_folder, f"render_{n}.png")
         render_sdf(render_path, model, xrange, yrange, config.device)
-        dataset.update_complementary_distribution(model, config.device, config.NR_maxiter)
+        dataset.update_complementary_distribution(model, config.NR_maxiter)

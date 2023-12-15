@@ -52,6 +52,6 @@ def train(model, dataset : PointCloudDataset, config):
         for inputs,labels in dataset.test_loader:
             outputs = model(inputs)
             loss = testlossfun(outputs, labels)
-            test_loss += config.batch_size * loss.item()
+            test_loss += config.test_batch_size * loss.item()
         print(f"Test loss after epoch {epoch+1} : {test_loss}")
         print()
