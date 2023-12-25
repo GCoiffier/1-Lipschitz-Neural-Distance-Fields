@@ -14,12 +14,13 @@ def point_cloud_from_tensor(Xin, Xout) -> M.mesh.PointCloud:
         attr[i] = True
     return pc
 
-def render_sdf(path, model, xrange, yrange, device, res=800, pad=0.2):
-    X = np.linspace(xrange[0]-pad, xrange[1]+pad, res)
-    resY = round(res * (yrange[1] - yrange[0])/(xrange[1]-xrange[0]))
-    Y = np.linspace(yrange[0]-pad, yrange[1]+pad, resY)
+def render_sdf(path, model, domain : M.geometry.BB2D, device, res=800):
+    X = np.linspace(domain.left, domain.right, res)
+    resY = round(res * domain.height/domain.width)
+    Y = np.linspace(domain.bottom, domain.top, resY)
 
     img = np.zeros((res,resY))
+
     for i in range(res):
         inp = torch.Tensor([[X[i], Y[j]] for j in range(resY)]).to(device)
         img[i,:] = np.squeeze(model(inp).cpu().detach().numpy())
@@ -31,6 +32,37 @@ def render_sdf(path, model, xrange, yrange, device, res=800, pad=0.2):
         vmin,vmax = -1, 1
 
     norm = colors.TwoSlopeNorm(vmin=vmin, vmax=vmax, vcenter=0)
-    plt.imshow(img, cmap="seismic", norm=norm)
+    plt.clf()
+    pos = plt.imshow(img, cmap="seismic", norm=norm)
     plt.axis('off')
+    plt.colorbar(pos)
+    plt.savefig(path, bbox_inches='tight', pad_inches=0)
+
+def render_gradient_norm(path, model, domain : M.geometry.BB2D, device, res=800):
+    X = np.linspace(domain.left, domain.right, res)
+    resY = round(res * domain.height/domain.width)
+    Y = np.linspace(domain.bottom, domain.top, resY)
+    img = np.zeros((res,resY))
+
+    gmin, gmax = float("inf"), -float("inf")
+    for i in range(res):
+        inp = torch.Tensor([[X[i], Y[j]] for j in range(resY)]).to(device)
+        inp.requires_grad = True
+        y = model(inp)
+        Gy = torch.ones_like(y)
+        y.backward(Gy,retain_graph=True)
+        # retrieve gradient of the function
+        grad = inp.grad
+        grad_norm = torch.sqrt(torch.sum(grad**2, axis=1))
+        gmin = min(gmin, float(torch.min(grad_norm)))
+        gmax = max(gmax, float(torch.max(grad_norm)))
+        img[i,:] = np.squeeze(grad_norm.cpu().detach().numpy())
+    img = img[:,::-1].T
+
+    print("GRAD NORM INTERVAL", (gmin, gmax))
+
+    plt.clf()
+    pos = plt.imshow(img, vmin=0, vmax=2, cmap="seismic")
+    plt.axis("off")
+    plt.colorbar(pos)
     plt.savefig(path, bbox_inches='tight', pad_inches=0)

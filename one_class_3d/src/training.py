@@ -2,10 +2,9 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from tqdm import tqdm
-
 from .dataset import PointCloudDataset
 from .model import *
+from tqdm import tqdm
 
 class SH_KR:
     """ Hinge Kantorovitch-Rubinstein loss"""
@@ -28,9 +27,12 @@ def train(model, dataset : PointCloudDataset, config):
         optimizer = torch.optim.SGD(model.parameters(), lr=config.learning_rate, momentum=0.9)
     lossfun = SH_KR(config.loss_margin, config.loss_regul)
     testlossfun = nn.MSELoss() # mean square error
+    n_train = dataset.train_size // config.batch_size # number of training samples
+    print_step = (100//config.batch_size)
 
     for epoch in range(config.epochs):  # loop over the dataset multiple times
-        train_loss = 0.
+        
+        running_loss = 0.0
         for i, (X_in, X_out) in tqdm(dataset.train_loader):
             optimizer.zero_grad() # zero the parameter gradients
 
@@ -39,9 +41,14 @@ def train(model, dataset : PointCloudDataset, config):
             Y_out = model(X_out[0])
             loss = torch.mean(lossfun(-Y_in) + lossfun(Y_out))
             loss.backward() # call back propagation
-            train_loss += loss
             optimizer.step()
-        print(f"Train loss after epoch {epoch+1} : {train_loss}")
+
+            # print statistics
+            # running_loss += args.bs * loss.item()
+            # if i % print_step == print_step-1: # print every xxx mini-batches
+            #     print(f'[epoch {epoch + 1}, {i + 1:5d}/{n_train}] loss: {running_loss:.3f}')
+            #     running_loss = 0.0
+        # print()
         test_loss = 0.
         for inputs,labels in dataset.test_loader:
             outputs = model(inputs)
