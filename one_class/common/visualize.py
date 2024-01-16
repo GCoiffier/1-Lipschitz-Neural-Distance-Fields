@@ -1,20 +1,31 @@
 import numpy as np
-import os
 import mouette as M
 import torch
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 
+def point_cloud_from_array(X):
+    pc = M.mesh.PointCloud()
+    if X.shape[1]==2:
+        X = np.pad(X, ((0,0),(0,1)))
+    pc.vertices += list(X)
+    return pc
+
 def point_cloud_from_tensor(Xin, Xout) -> M.mesh.PointCloud:
     pc = M.mesh.new_point_cloud()
-    pc.vertices += list(np.pad(Xin,((0,0),(0,1)))) # don't forget to add z=0 to coordinates
-    pc.vertices += list(np.pad(Xout,((0,0),(0,1))))
+    if Xin.shape[1]==2:
+        # add z=0 to coordinates
+        pc.vertices += list(np.pad(Xin,((0,0),(0,1)))) 
+        pc.vertices += list(np.pad(Xout,((0,0),(0,1))))
+    else:
+        pc.vertices += list(Xin)
+        pc.vertices += list(Xout)
     attr = pc.vertices.create_attribute("in", bool)
     for i in range(Xin.shape[0]):
         attr[i] = True
     return pc
 
-def render_sdf(path, model, domain : M.geometry.BB2D, device, res=800):
+def render_sdf(path, model, domain : M.geometry.BB2D, device, res=800, z=0.):
     X = np.linspace(domain.left, domain.right, res)
     resY = round(res * domain.height/domain.width)
     Y = np.linspace(domain.bottom, domain.top, resY)

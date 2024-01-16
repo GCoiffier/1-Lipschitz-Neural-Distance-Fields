@@ -1,18 +1,15 @@
 import os
 import argparse
-import numpy as np
 from types import SimpleNamespace
 
 import mouette as M
 
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
-from src.model import DenseLipNetwork
-from src.dataset import PointCloudDataset
-from src.visualize import point_cloud_from_tensor, render_sdf
-from src.training import train
+from common.model import DenseLipNetwork
+from common.dataset import PointCloudDataset
+from common.visualize import point_cloud_from_tensor, render_sdf
+from common.training import train
 
 def get_device(force_cpu):
     if force_cpu or not torch.cuda.is_available():
@@ -32,6 +29,7 @@ if __name__ == "__main__":
 
     #### Config ####
     config = SimpleNamespace(
+        dim = 3,
         device = get_device(args.cpu),
         n_iter = args.n_iter,
         batch_size = args.batch_size,
@@ -52,9 +50,9 @@ if __name__ == "__main__":
     domain = dataset.object_BB()
 
     #### Create model and setup trainer
-    model = DenseLipNetwork([(3,256), (256,256), (256,256), (256,1)]).to(config.device)
-    # model = DenseLipNetwork([(3,256), (256,512), (512,256), (256,1)]).to(config.device)
-    # model = DenseLipNetwork([(3,512), (512,512), (512,512), (512,1)]).to(config.device)
+    model = DenseLipNetwork(
+        [(3,256), (256,256), (256,256), (256,256), (256,1)]
+    ).to(config.device)
 
     for n in range(config.n_iter):
         print("ITERATION", n+1)
@@ -62,7 +60,6 @@ if __name__ == "__main__":
         M.mesh.save(pc, os.path.join(config.output_folder, f"pc_{n}.geogram_ascii"))
 
         train(model, dataset, config)
-
         render_path = os.path.join(config.output_folder, f"render_{n}.png")
         render_sdf(render_path, model, 0., domain, config.device)
         dataset.update_complementary_distribution(model, config.NR_maxiter)

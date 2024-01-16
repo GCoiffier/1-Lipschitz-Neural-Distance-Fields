@@ -21,11 +21,15 @@ class SH_KR:
         """
         return  F.relu(self.margin - y) + (1./self.lbda) * torch.mean(-y)
 
-def train(model, dataset : PointCloudDataset, config):
+def get_optimizer(model, config):
     if "adam" in config.optimizer.lower():
         optimizer = torch.optim.Adam(model.parameters(), lr=config.learning_rate)
     else:
         optimizer = torch.optim.SGD(model.parameters(), lr=config.learning_rate, momentum=0.9)
+    return optimizer
+
+def train(model, dataset : PointCloudDataset, config):
+    optimizer = get_optimizer(model, config)
     lossfun = SH_KR(config.loss_margin, config.loss_regul)
     testlossfun = nn.MSELoss() # mean square error
 

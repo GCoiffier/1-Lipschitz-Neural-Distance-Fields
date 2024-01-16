@@ -1,9 +1,16 @@
 import torch
 from torch import nn
 from deel import torchlip
+import os
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
+
+def save_model(model, folder, model_name):
+    torch.save(model.state_dict(), os.path.join(folder, model_name))
+
+def load_model(path):
+    return torch.load(path)
 
 def DenseLipNetwork(
     widths:list, 

@@ -1,6 +1,5 @@
 import os
 import argparse
-import numpy as np
 from types import SimpleNamespace
 
 import mouette as M
@@ -9,16 +8,11 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from src.model import DenseLipNetwork, count_parameters
-from src.dataset import PointCloudDataset
-from src.visualize import point_cloud_from_tensor, render_sdf, render_gradient_norm
-from src.training import train
-
-def get_device(force_cpu):
-    if force_cpu or not torch.cuda.is_available():
-        return torch.device("cpu")
-    else:
-        return torch.device("cuda")
+from common.dataset import PointCloudDataset
+from common.model import *
+from common.visualize import point_cloud_from_tensor, render_sdf, render_gradient_norm
+from common.training import train
+from common.utils import *
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -32,6 +26,7 @@ if __name__ == "__main__":
 
     #### Config ####
     config = SimpleNamespace(
+        dim = 2,
         device = get_device(args.cpu),
         n_iter = args.n_iter,
         batch_size = args.batch_size,
@@ -50,7 +45,7 @@ if __name__ == "__main__":
     #### Load dataset ####
     dataset = PointCloudDataset(args.dataset, config)
     plot_domain = dataset.object_BB()
-    plot_domain.pad(0.5, 0.8)
+    plot_domain.pad(0.5, 0.5)
 
     #### Create model and setup trainer
     
@@ -66,7 +61,7 @@ if __name__ == "__main__":
 
     model = DenseLipNetwork(
         [(2,32), (32,32), (32,32), (32,32), (32,1)], 
-        group_sort_size=0, niter_spectral=10, niter_bjorck=300
+        group_sort_size=0, niter_spectral=3, niter_bjorck=15
     ).to(config.device)
 
     print("PARAMETERS:", count_parameters(model))
@@ -83,6 +78,3 @@ if __name__ == "__main__":
         grad_path = os.path.join(config.output_folder, f"grad_{n}.png")
         render_gradient_norm(grad_path, model, plot_domain, config.device)
         dataset.update_complementary_distribution(model, config.NR_maxiter)
-
-        if n==0:
-            config.loss_margin = 1e-3
