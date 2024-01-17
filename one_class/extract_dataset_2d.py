@@ -142,6 +142,7 @@ if __name__ == "__main__":
     X_in = X_other[Y_other<-1e-3, :]
     X_out = X_other[Y_other>1e-2, :]
     X_in = np.concatenate((X_in, X_surf))
+    X_out = X_out[:X_in.shape[0], :]
 
     print("Generate test set")
     n_test_surf = min(args.n_test//3, X_surf.shape[0])

@@ -3,12 +3,9 @@ import argparse
 from types import SimpleNamespace
 
 import mouette as M
-
 import torch
-import torch.nn as nn
-import torch.nn.functional as F
 
-from common.dataset import PointCloudDataset
+from common.dataset import PointCloudDataset2D
 from common.model import *
 from common.visualize import point_cloud_from_tensor, render_sdf, render_gradient_norm
 from common.training import train
@@ -43,8 +40,8 @@ if __name__ == "__main__":
     print("DEVICE:", config.device)
 
     #### Load dataset ####
-    dataset = PointCloudDataset(args.dataset, config)
-    plot_domain = dataset.object_BB()
+    dataset = PointCloudDataset2D(args.dataset, config)
+    plot_domain = dataset.object_BB
     plot_domain.pad(0.5, 0.5)
 
     #### Create model and setup trainer
