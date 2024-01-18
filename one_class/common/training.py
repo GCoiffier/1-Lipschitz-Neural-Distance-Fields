@@ -32,10 +32,9 @@ def train(model, dataset : PointCloudDataset, config):
     optimizer = get_optimizer(model, config)
     lossfun = SH_KR(config.loss_margin, config.loss_regul)
     testlossfun = nn.MSELoss() # mean square error
-
     for epoch in range(config.epochs):  # loop over the dataset multiple times
         train_loss = 0.
-        for i, (X_in, X_out) in tqdm(dataset.train_loader):
+        for i, (X_in, X_out) in dataset.train_loader:
             optimizer.zero_grad() # zero the parameter gradients
 
             # forward + backward + optimize
@@ -44,7 +43,7 @@ def train(model, dataset : PointCloudDataset, config):
             loss = torch.mean(lossfun(-Y_in) + lossfun(Y_out))
             loss.backward() # call back propagation
             train_loss += loss
-            optimizer.step()
+            optimizer.step() 
         print(f"Train loss after epoch {epoch+1} : {train_loss}")
         test_loss = 0.
         for inputs,labels in dataset.test_loader:

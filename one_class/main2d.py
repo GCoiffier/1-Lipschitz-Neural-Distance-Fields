@@ -4,10 +4,11 @@ from types import SimpleNamespace
 
 import mouette as M
 import torch
+import numpy as np
 
 from common.dataset import PointCloudDataset2D
 from common.model import *
-from common.visualize import point_cloud_from_tensor, render_sdf, render_gradient_norm
+from common.visualize import *
 from common.training import train
 from common.utils import *
 
@@ -27,11 +28,12 @@ if __name__ == "__main__":
         device = get_device(args.cpu),
         n_iter = args.n_iter,
         batch_size = args.batch_size,
-        test_batch_size = 1000,
+        test_batch_size = 10000,
         epochs = args.epochs,
         loss_margin = 1e-2, # m
         loss_regul = 100., # lambda
         optimizer = "adam",
+        # optimizer = "bfgs",
         learning_rate = 1e-3,
         NR_maxiter = 3,
         output_folder = os.path.join("output", args.dataset)
@@ -46,19 +48,12 @@ if __name__ == "__main__":
 
     #### Create model and setup trainer
     
-    # model = DenseLipNetwork(
-    #     [(2,256), (256,256), (256,256), (256,256), (256,1)], 
-    #     group_sort_size=2, niter_spectral=3, niter_bjorck=20
-    # ).to(config.device)
-
-    # model = DenseLipNetwork(
-    #     [(2,64), (64,64), (64,64), (64,64), (64,1)], 
-    #     group_sort_size=0, niter_spectral=3, niter_bjorck=15
-    # ).to(config.device)
+    # archi = [(2,256), (256,256), (256,256), (256,256), (256,1)]
+    # archi = [(2,64), (64,64), (64,64), (64,64), (64,1)]
+    archi = [(2,32), (32,32), (32,32), (32,32), (32,1)]
 
     model = DenseLipNetwork(
-        [(2,32), (32,32), (32,32), (32,32), (32,1)], 
-        group_sort_size=0, niter_spectral=3, niter_bjorck=15
+        archi, group_sort_size=0, niter_spectral=10, niter_bjorck=30
     ).to(config.device)
 
     print("PARAMETERS:", count_parameters(model))
@@ -70,8 +65,16 @@ if __name__ == "__main__":
 
         train(model, dataset, config)
 
-        render_path = os.path.join(config.output_folder, f"render_{n}.png")
+        singular_values = parameter_singular_values(model)
+        print("Singular values:")
+        for sv in singular_values:
+            print(sv)
+        print()
+
+        render_path = os.path.join(config.output_folder, f"render_{n+1}.png")
         render_sdf(render_path, model, plot_domain, config.device)
-        grad_path = os.path.join(config.output_folder, f"grad_{n}.png")
+        grad_path = os.path.join(config.output_folder, f"grad_{n+1}.png")
         render_gradient_norm(grad_path, model, plot_domain, config.device)
+        model_path = os.path.join(config.output_folder, f"model_{n+1}.pt")
+        save_model(model, archi, model_path)
         dataset.update_complementary_distribution(model, config.NR_maxiter)

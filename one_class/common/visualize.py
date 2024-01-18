@@ -61,10 +61,12 @@ def render_gradient_norm(path, model, domain : M.geometry.BB2D, device, res=800)
         inp.requires_grad = True
         y = model(inp)
         Gy = torch.ones_like(y)
-        y.backward(Gy,retain_graph=True)
+        y.backward(Gy) #,retain_graph=True)
         # retrieve gradient of the function
         grad = inp.grad
         grad_norm = torch.sqrt(torch.sum(grad**2, axis=1))
+        print(grad.shape, grad_norm.shape)
+        exit()
         gmin = min(gmin, float(torch.min(grad_norm)))
         gmax = max(gmax, float(torch.max(grad_norm)))
         img[i,:] = np.squeeze(grad_norm.cpu().detach().numpy())
@@ -77,3 +79,14 @@ def render_gradient_norm(path, model, domain : M.geometry.BB2D, device, res=800)
     plt.axis("off")
     plt.colorbar(pos)
     plt.savefig(path, bbox_inches='tight', pad_inches=0)
+
+
+def parameter_singular_values(model):
+    layers = list(model.children())
+    data= []
+    for layer in layers:
+        if hasattr(layer, "weight"):
+            w = layer.weight
+            u, s, v = torch.svd(w)
+            data.append(f"{layer}, min={s.min()}, max={s.max()}")
+    return data

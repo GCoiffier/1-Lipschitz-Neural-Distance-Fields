@@ -107,7 +107,7 @@ class PointCloudDataset2D(_BasePointCloudDataset):
         """
         step_size = 1. / maxiter
         Xt = self.X_train_out.clone()
-        learning_rate = torch.rand((Xt.shape[0],1))
+        learning_rate = torch.rand((Xt.shape[0],1)).to(self.config.device)
 
         for _ in range(maxiter):
 
