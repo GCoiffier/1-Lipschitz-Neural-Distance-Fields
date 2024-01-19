@@ -18,7 +18,7 @@ def load_model(path):
 def DenseLipNetwork(
     widths:list, 
     group_sort_size:int=0, 
-    k_coeff_lip:float=1.0, 
+    k_coeff_lip:float=1., 
     niter_spectral:int=3, 
     niter_bjorck:int=15
 ):

@@ -54,25 +54,20 @@ def render_gradient_norm(path, model, domain : M.geometry.BB2D, device, res=800)
     resY = round(res * domain.height/domain.width)
     Y = np.linspace(domain.bottom, domain.top, resY)
     img = np.zeros((res,resY))
-
-    gmin, gmax = float("inf"), -float("inf")
     for i in range(res):
         inp = torch.Tensor([[X[i], Y[j]] for j in range(resY)]).to(device)
         inp.requires_grad = True
-        y = model(inp)
-        Gy = torch.ones_like(y)
-        y.backward(Gy) #,retain_graph=True)
+        y = torch.sum(model(inp))
+        y.backward()
+        # y = model(inp)
+        # y.backward(torch.ones_like(y)) #,retain_graph=True)
         # retrieve gradient of the function
         grad = inp.grad
-        grad_norm = torch.sqrt(torch.sum(grad**2, axis=1))
-        print(grad.shape, grad_norm.shape)
-        exit()
-        gmin = min(gmin, float(torch.min(grad_norm)))
-        gmax = max(gmax, float(torch.max(grad_norm)))
+        grad_norm = torch.norm(grad, dim=1)
         img[i,:] = np.squeeze(grad_norm.cpu().detach().numpy())
     img = img[:,::-1].T
 
-    print("GRAD NORM INTERVAL", (gmin, gmax))
+    print("GRAD NORM INTERVAL", (np.min(img), np.max(img)))
 
     plt.clf()
     pos = plt.imshow(img, vmin=0, vmax=2, cmap="seismic")
@@ -87,6 +82,7 @@ def parameter_singular_values(model):
     for layer in layers:
         if hasattr(layer, "weight"):
             w = layer.weight
-            u, s, v = torch.svd(w)
+            u, s, v = torch.linalg.svd(w)
+            # data.append(f"{layer}, {s}")
             data.append(f"{layer}, min={s.min()}, max={s.max()}")
     return data

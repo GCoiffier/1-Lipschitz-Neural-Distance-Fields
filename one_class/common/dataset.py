@@ -115,9 +115,8 @@ class PointCloudDataset2D(_BasePointCloudDataset):
             Xt.requires_grad = True
 
             # Compute signed distances
-            y = model(Xt)
-            Gy = torch.ones_like(y)
-            y.backward(Gy,retain_graph=True)
+            y = torch.mean(model(Xt))
+            y.backward()
             
             # retrieve gradient of the function
             grad = Xt.grad

@@ -49,11 +49,11 @@ if __name__ == "__main__":
     #### Create model and setup trainer
     
     # archi = [(2,256), (256,256), (256,256), (256,256), (256,1)]
-    # archi = [(2,64), (64,64), (64,64), (64,64), (64,1)]
-    archi = [(2,32), (32,32), (32,32), (32,32), (32,1)]
-
+    archi = [(2,64), (64,64), (64,64), (64,64), (64,1)]
+    # archi = [(2,32), (32,32), (32,32), (32,32), (32,1)]
+    
     model = DenseLipNetwork(
-        archi, group_sort_size=0, niter_spectral=10, niter_bjorck=30
+        archi, group_sort_size=0, niter_spectral=5, niter_bjorck=20
     ).to(config.device)
 
     print("PARAMETERS:", count_parameters(model))
