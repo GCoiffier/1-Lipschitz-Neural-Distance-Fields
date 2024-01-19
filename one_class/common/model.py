@@ -24,7 +24,7 @@ def DenseLipNetwork(
 ):
     layers = []
     activation = torchlip.FullSort() if group_sort_size == 0 else torchlip.GroupSort(group_sort_size)
-    for w_in, w_out in widths:
+    for ilayer, (w_in, w_out) in enumerate(widths):
         if w_out==1:
             layers.append(torchlip.FrobeniusLinear(w_in, w_out))
         else:

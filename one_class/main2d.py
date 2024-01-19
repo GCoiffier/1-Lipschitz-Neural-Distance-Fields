@@ -31,9 +31,8 @@ if __name__ == "__main__":
         test_batch_size = 10000,
         epochs = args.epochs,
         loss_margin = 1e-2, # m
-        loss_regul = 100., # lambda
+        loss_regul = 10., # lambda
         optimizer = "adam",
-        # optimizer = "bfgs",
         learning_rate = 1e-3,
         NR_maxiter = 3,
         output_folder = os.path.join("output", args.dataset)
@@ -53,7 +52,7 @@ if __name__ == "__main__":
     # archi = [(2,32), (32,32), (32,32), (32,32), (32,1)]
     
     model = DenseLipNetwork(
-        archi, group_sort_size=0, niter_spectral=5, niter_bjorck=20
+        archi, group_sort_size=0, niter_spectral=3, niter_bjorck=15
     ).to(config.device)
 
     print("PARAMETERS:", count_parameters(model))

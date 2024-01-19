@@ -36,11 +36,10 @@ def train(model, dataset : PointCloudDataset, config):
         train_loss = 0.
         for i, (X_in, X_out) in dataset.train_loader:
             optimizer.zero_grad() # zero the parameter gradients
-
             # forward + backward + optimize
             Y_in = model(X_in[0]) # forward computation
             Y_out = model(X_out[0])
-            loss = torch.mean(lossfun(-Y_in) + lossfun(Y_out))
+            loss = torch.sum(lossfun(-Y_in) + lossfun(Y_out))
             loss.backward() # call back propagation
             train_loss += loss
             optimizer.step() 
