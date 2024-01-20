@@ -6,7 +6,7 @@ import numpy as np
 import argparse
 from igl import fast_winding_number_for_meshes
 from numba import jit, prange
-from .common.visualize import point_cloud_from_array
+from common.visualize import point_cloud_from_array
 
 @jit(nopython=True,cache=True)
 def point_triangle_distance(P, TRI):
@@ -263,24 +263,28 @@ if __name__ == "__main__":
     domain = M.geometry.BB3D.of_mesh(mesh, padding=0.3)
 
     print("Generate train set")
-    n_surf = args.n_train//10
-    n_other = args.n_train - n_surf
+    n_in = args.n_train//2
+    n_out = args.n_train//2
+    n_surf = n_in//8
+    n_other = n_in - n_surf
     print(" | Sample points on surface")
     X_surf = M.processing.sampling.sample_points_from_surface(mesh, n_surf)
 
     print(" | Sample uniform distribution in domain")
-    X_other = M.processing.sampling.sample_bounding_box_3D(domain, 10*n_other)
+    X_other = M.processing.sampling.sample_bounding_box_3D(domain, 50*n_other)
     print(" | Compute generalized winding number")
-    Y_other = fast_winding_number_for_meshes(np.array(mesh.vertices), np.array(mesh.faces), X_other)
+    Y_other = fast_winding_number_for_meshes(np.array(mesh.vertices), np.array(mesh.faces, dtype=np.int32), X_other)
     print(f" | WN : [{np.min(Y_other)} ; {np.max(Y_other)}]")
 
-    X_in = X_other[Y_other>0.5][:n_other//2]
-    X_out = X_other[Y_other<=0.5][:args.n_train//2]
-    print(f" | Sampled : {X_surf.shape[0]} (surface), {X_in.shape[0]} (inside), {X_out.shape[0]} (outside)")
+    X_in = X_other[Y_other>0.5][:n_other]
+    X_out = X_other[Y_other<=0.5][:n_out]
+
+    print(f"Sampled : {X_in.shape[0] + X_surf.shape[0]} (inside), {X_surf.shape[0]} (surface), {X_out.shape[0]} (outside)")
 
     print("\nGenerate test set")
     n_surf_test = min(args.n_test//10, n_surf)
-    n_other_test = args.n_test - n_surf
+    n_other_test = args.n_test - n_surf_test
+
     print(" | Sampling points on surface")
     X_surf_test = X_surf[np.random.choice(n_surf,n_surf_test, replace=False), :]
     print(" | Sampling uniform distribution in domain")
@@ -297,7 +301,7 @@ if __name__ == "__main__":
     print(" | Compute distances")
     D_test = compute_distances(X_other_test,TRIS)
     print(" | Computing generalized winding number and update distance sign")
-    Y_other_test = fast_winding_number_for_meshes(np.array(mesh.vertices), np.array(mesh.faces), X_other_test)
+    Y_other_test = fast_winding_number_for_meshes(np.array(mesh.vertices), np.array(mesh.faces, dtype=np.int32), X_other_test)
     D_test[Y_other_test>0.5] *= -1 # negative distance for points inside the shape
 
     X_test = np.concatenate((X_surf_test, X_other_test))
@@ -313,8 +317,8 @@ if __name__ == "__main__":
         for i in pc_test.id_vertices:
             dist_attr[i] = D_test[i]
 
-    X_in = np.concatenate((X_surf, X_in)) # add surface points to inside
-    print("\nSaving files")
+    X_in_tot = np.concatenate((X_surf, X_in)) # add surface points to inside
+    print("Saving files")
     name = M.utils.get_filename(args.input_mesh)
     if args.visu:
         M.mesh.save(pc_in, f"inputs/{name}_pts_in.xyz")
@@ -322,7 +326,7 @@ if __name__ == "__main__":
         M.mesh.save(pc_surf, f"inputs/{name}_pts_surf.xyz")
         M.mesh.save(pc_test, f"inputs/{name}_pts_test.geogram_ascii")
         M.mesh.save(mesh, f"inputs/{name}_surface.stl")
-    np.save(f"inputs/{name}_Xtrain_in.npy", X_in)
+    np.save(f"inputs/{name}_Xtrain_in.npy", X_in_tot)
     np.save(f"inputs/{name}_Xtrain_out.npy", X_out)
     np.save(f"inputs/{name}_Xtest.npy", X_test)
     np.save(f"inputs/{name}_Ytest.npy", D_test)

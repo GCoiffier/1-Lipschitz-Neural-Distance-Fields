@@ -4,18 +4,11 @@ from types import SimpleNamespace
 
 import mouette as M
 
-import torch
-
-from common.model import DenseLipNetwork
+from common.model import DenseLipNetwork, save_model
 from common.dataset import PointCloudDataset
-from common.visualize import point_cloud_from_tensor, render_sdf
+from common.visualize import *
 from common.training import train
-
-def get_device(force_cpu):
-    if force_cpu or not torch.cuda.is_available():
-        return torch.device("cpu")
-    else:
-        return torch.device("cuda")
+from common.utils import get_device
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -47,11 +40,16 @@ if __name__ == "__main__":
 
     #### Load dataset ####
     dataset = PointCloudDataset(args.dataset, config)
-    domain = dataset.object_BB()
+    plot_domain = dataset.object_BB
+    plot_domain.pad(0.5, 0.5, 0.5)
 
     #### Create model and setup trainer
+    # archi = [(3,256), (256,256), (256,256), (256,256), (256,1)]
+    # archi = [(3,64), (64,64), (64,64), (64,64), (64,1)]
+    archi = [(3,32), (32,32), (32,32), (32,32), (32,1)]
+
     model = DenseLipNetwork(
-        [(3,256), (256,256), (256,256), (256,256), (256,1)]
+        archi, group_sort_size=0,
     ).to(config.device)
 
     for n in range(config.n_iter):
@@ -60,6 +58,11 @@ if __name__ == "__main__":
         M.mesh.save(pc, os.path.join(config.output_folder, f"pc_{n}.geogram_ascii"))
 
         train(model, dataset, config)
-        render_path = os.path.join(config.output_folder, f"render_{n}.png")
-        render_sdf(render_path, model, 0., domain, config.device)
+        singular_values = parameter_singular_values(model)
+        print("Singular values:")
+        for sv in singular_values:
+            print(sv)
+        print()
+        model_path = os.path.join(config.output_folder, f"model_{n+1}.pt")
+        save_model(model, archi, model_path)
         dataset.update_complementary_distribution(model, config.NR_maxiter)

@@ -9,8 +9,8 @@ def save_model(model, layers, path):
     data = { "layers" : layers, "state_dict" : model.state_dict()}
     torch.save(data, path)
     
-def load_model(path):
-    data = torch.load(path)
+def load_model(path, device):
+    data = torch.load(path, map_location=device)
     model = DenseLipNetwork(data["layers"])
     model.load_state_dict(data["state_dict"])
     return model

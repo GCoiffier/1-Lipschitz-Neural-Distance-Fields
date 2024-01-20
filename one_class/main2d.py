@@ -10,7 +10,7 @@ from common.dataset import PointCloudDataset2D
 from common.model import *
 from common.visualize import *
 from common.training import train
-from common.utils import *
+from common.utils import get_device
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()

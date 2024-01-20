@@ -34,7 +34,7 @@ def train(model, dataset : PointCloudDataset, config):
     testlossfun = nn.MSELoss() # mean square error
     for epoch in range(config.epochs):  # loop over the dataset multiple times
         train_loss = 0.
-        for i, (X_in, X_out) in dataset.train_loader:
+        for i, (X_in, X_out) in tqdm(dataset.train_loader):
             optimizer.zero_grad() # zero the parameter gradients
             # forward + backward + optimize
             Y_in = model(X_in[0]) # forward computation

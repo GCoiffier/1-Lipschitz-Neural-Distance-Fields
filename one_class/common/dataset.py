@@ -95,7 +95,7 @@ class PointCloudDataset2D(_BasePointCloudDataset):
             if self.X_train_out is None : return None
             vmin = torch.min(self.X_train_out, dim=0)[0]
             vmax = torch.max(self.X_train_out, dim=0)[0] 
-            return M.geometry.BB2D(float(vmin[0]), float(vmin[1]), float(vmax[0]), float(vmax[1]))
+            self._domain = M.geometry.BB2D(float(vmin[0]), float(vmin[1]), float(vmax[0]), float(vmax[1]))
         return self._domain
 
     def update_complementary_distribution(self, model, maxiter, level_set=-1e-3):
@@ -143,58 +143,18 @@ class PointCloudDataset(_BasePointCloudDataset):
         if self._object_bb is None :
             if self.X_train_in is None : return None
             vmin = torch.min(self.X_train_in, dim=0)[0]
-            vmax = torch.max(self.X_train_in, dim=0)[0] 
-            return M.geometry.BB2D(float(vmin[0]), float(vmin[1]), float(vmax[0]), float(vmax[1]))
+            vmax = torch.max(self.X_train_in, dim=0)[0]
+            self._object_bb = M.geometry.BB3D(*vmin, *vmax)
         return self._object_bb
     
     @property
     def domain(self):
         if self._domain is None :
-            if self.X_train_out is None : return None
-            vmin = torch.min(self.X_train_out, dim=0)[0]
-            vmax = torch.max(self.X_train_out, dim=0)[0] 
-            return M.geometry.BB2D(float(vmin[0]), float(vmin[1]), float(vmax[0]), float(vmax[1]))
+            if self.X_train_in is None : return None
+            vmin = torch.min(self.X_train_in, dim=0)[0]
+            vmax = torch.max(self.X_train_in, dim=0)[0]
+            self._domain = M.geometry.BB3D(*vmin, *vmax)
         return self._domain
-
-    @property
-    def train_size(self):
-        return self.X_train_in.shape[0]
-
-    @property
-    def train_loader(self):
-        return enumerate(zip(self.train_loader_in, self.train_loader_out))
-
-    def load_dataset(self):
-        self.log("Loading Dataset...")
-        ### Load test dataset
-        self.X_test = np.load(self.paths["Xtest"])
-        self.Y_test = np.load(self.paths["Ytest"]).reshape((self.X_test.shape[0], 1))
-
-        self.X_test  = torch.Tensor(self.X_test).to(self.config.device)
-        self.Y_test  = torch.Tensor(self.Y_test).to(self.config.device)
-
-        ### Load and create train dataset
-        self.X_train_in = np.load(self.paths["train"])
-        self.X_train_in = torch.Tensor(self.X_train_in).to(self.config.device)
-
-        self.log(f"Found {self.X_train_in.shape[0]} training examples in dataset")
-     
-        objBB = self.object_BB()
-        pad = 0.5
-        self.domain = M.geometry.BB2D( objBB.left -pad, objBB.bottom - pad, objBB.right + pad, objBB.top + pad)
-
-        self.log(f"Generating training examples out of distribution...")
-        X_out = self.generate_complementary_distribution_uniform(self.X_train_in.shape[0])
-        self.X_train_out = torch.Tensor(X_out).to(self.config.device)
-        
-        self.log(f"...Generated {self.X_train_out.shape[0]} training examples out of distribution")
-
-        self.train_loader_in = DataLoader(TensorDataset(self.X_train_in), batch_size=self.config.batch_size, shuffle=True)
-        self.train_loader_out = DataLoader(TensorDataset(self.X_train_out), batch_size=self.config.batch_size, shuffle=True)
-
-        test_data = TensorDataset(self.X_test, self.Y_test)
-        self.test_loader = DataLoader(test_data, batch_size=self.config.test_batch_size)
-        self.log("...Dataset loading complete")
 
     def update_complementary_distribution(self, model, maxiter, level_set=-1e-3):
         """
@@ -225,8 +185,8 @@ class PointCloudDataset(_BasePointCloudDataset):
             Xt = Xt + step_size * learning_rate * target * grad
             
             # clipping to domain
-            Xt[:,0] = torch.clip(Xt[:,0], self.domain.left, self.domain.right)
-            Xt[:,1] = torch.clip(Xt[:,1], self.domain.bottom, self.domain.top)
+            for i in range(3):
+                Xt[:,i] = torch.clip(Xt[:,i], self.domain.min_coords[i], self.domain.max_coords[i])
 
         self.X_train_out = Xt.detach()
         self.train_loader_out = DataLoader(TensorDataset(self.X_train_out), batch_size=self.config.batch_size, shuffle=True)
