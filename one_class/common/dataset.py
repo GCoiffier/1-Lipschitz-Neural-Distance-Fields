@@ -156,7 +156,7 @@ class PointCloudDataset(_BasePointCloudDataset):
             self._domain = M.geometry.BB3D(*vmin, *vmax)
         return self._domain
 
-    def update_complementary_distribution(self, model, maxiter, level_set=-1e-3):
+    def update_complementary_distribution(self, model, maxiter, level_set=-1e-2):
         """
         Perform Newton-Raphson iteration on the points to make them closer
 

@@ -29,9 +29,9 @@ if __name__ == "__main__":
         test_batch_size = 1000,
         epochs = args.epochs,
         loss_margin = 0.01, # m
-        loss_regul = 1000., # lambda
+        loss_regul = 100., # lambda
         optimizer = "adam",
-        learning_rate = 1e-3,
+        learning_rate = 5e-4,
         NR_maxiter = 3,
         output_folder = os.path.join("output", args.dataset)
     )
@@ -44,7 +44,8 @@ if __name__ == "__main__":
     plot_domain.pad(0.5, 0.5, 0.5)
 
     #### Create model and setup trainer
-    archi = [(3,256), (256,256), (256,256), (256,256), (256,1)]
+    archi = [(3,512), (512,512), (512,512), (512,512), (512,1)]
+    # archi = [(3,256), (256,256), (256,256), (256,256), (256,1)]
     # archi = [(3,128), (128,128), (128,128), (128,128), (128,1)]
     # archi = [(3,64), (64,64), (64,64), (64,64), (64,1)]
     # archi = [(3,32), (32,32), (32,32), (32,32), (32,1)]
