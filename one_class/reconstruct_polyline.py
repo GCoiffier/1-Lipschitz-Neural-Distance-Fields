@@ -14,8 +14,7 @@ if __name__ == "__main__":
 
     parser.add_argument("model", type=str)
     parser.add_argument("-o", "--output-name", type=str, default="", help="output name")
-    parser.add_argument("-n", "--n-iter", type=int, default=20, help="")
-    parser.add_argument("-d", '--offset', type=float, nargs='+', default=0., help="offset of value to print")
+    parser.add_argument("-d", '--offset', type=float, nargs='+', default=[0.], help="offset of value to print")
     parser.add_argument("-res", "--resolution", type=int, default=800, help="resolution")
     parser.add_argument("-cpu", action="store_true")
     args = parser.parse_args()
