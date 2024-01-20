@@ -142,8 +142,8 @@ class PointCloudDataset(_BasePointCloudDataset):
     def object_BB(self):
         if self._object_bb is None :
             if self.X_train_in is None : return None
-            vmin = torch.min(self.X_train_in, dim=0)[0]
-            vmax = torch.max(self.X_train_in, dim=0)[0]
+            vmin = torch.min(self.X_train_in, dim=0)[0].cpu()
+            vmax = torch.max(self.X_train_in, dim=0)[0].cpu()
             self._object_bb = M.geometry.BB3D(*vmin, *vmax)
         return self._object_bb
     
@@ -151,8 +151,8 @@ class PointCloudDataset(_BasePointCloudDataset):
     def domain(self):
         if self._domain is None :
             if self.X_train_in is None : return None
-            vmin = torch.min(self.X_train_in, dim=0)[0]
-            vmax = torch.max(self.X_train_in, dim=0)[0]
+            vmin = torch.min(self.X_train_in, dim=0)[0].cpu()
+            vmax = torch.max(self.X_train_in, dim=0)[0].cpu()
             self._domain = M.geometry.BB3D(*vmin, *vmax)
         return self._domain
 
@@ -165,7 +165,7 @@ class PointCloudDataset(_BasePointCloudDataset):
         """
         step_size = 1. / maxiter
         Xt = self.X_train_out.clone()
-        learning_rate = torch.rand((Xt.shape[0],1))
+        learning_rate = torch.rand((Xt.shape[0],1)).to(self.config.device)
 
         for _ in range(maxiter):
 

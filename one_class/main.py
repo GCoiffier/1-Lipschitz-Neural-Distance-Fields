@@ -4,8 +4,8 @@ from types import SimpleNamespace
 
 import mouette as M
 
-from common.model import DenseLipNetwork, save_model
 from common.dataset import PointCloudDataset
+from common.model import *
 from common.visualize import *
 from common.training import train
 from common.utils import get_device
@@ -31,7 +31,7 @@ if __name__ == "__main__":
         loss_margin = 0.01, # m
         loss_regul = 1000., # lambda
         optimizer = "adam",
-        learning_rate = 0.005,
+        learning_rate = 1e-3,
         NR_maxiter = 3,
         output_folder = os.path.join("output", args.dataset)
     )
@@ -44,13 +44,17 @@ if __name__ == "__main__":
     plot_domain.pad(0.5, 0.5, 0.5)
 
     #### Create model and setup trainer
-    # archi = [(3,256), (256,256), (256,256), (256,256), (256,1)]
+    archi = [(3,256), (256,256), (256,256), (256,256), (256,1)]
+    # archi = [(3,128), (128,128), (128,128), (128,128), (128,1)]
     # archi = [(3,64), (64,64), (64,64), (64,64), (64,1)]
-    archi = [(3,32), (32,32), (32,32), (32,32), (32,1)]
+    # archi = [(3,32), (32,32), (32,32), (32,32), (32,1)]
 
     model = DenseLipNetwork(
         archi, group_sort_size=0,
+        niter_spectral=3, niter_bjorck=15
     ).to(config.device)
+
+    print("PARAMETERS:", count_parameters(model))
 
     for n in range(config.n_iter):
         print("ITERATION", n+1)
