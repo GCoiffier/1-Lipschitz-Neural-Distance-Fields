@@ -260,33 +260,35 @@ if __name__ == "__main__":
     print("Load mesh")
     mesh = M.mesh.load(args.input_mesh)
     mesh = M.transform.fit_into_unit_cube(mesh)
-    domain = M.geometry.BB3D.of_mesh(mesh, padding=0.3)
+    domain = M.geometry.BB3D.of_mesh(mesh)
 
     print("Generate train set")
-    n_in = args.n_train//2
-    n_out = args.n_train//2
-    n_surf = n_in//8
-    n_other = n_in - n_surf
+    n_other = args.n_train//2
+    n_surf = n_other//8
     print(" | Sample points on surface")
-    X_surf = M.processing.sampling.sample_points_from_surface(mesh, n_surf)
+    X_bd = M.processing.sampling.sample_points_from_surface(mesh, n_surf)
 
     print(" | Sample uniform distribution in domain")
-    X_other = M.processing.sampling.sample_bounding_box_3D(domain, 50*n_other)
+    X_other1 = M.processing.sampling.sample_bounding_box_3D(domain, 50*args.n_train)
+    domain.pad(0.3,0.3,0.3)
+    X_other2 = M.processing.sampling.sample_bounding_box_3D(domain, 20*args.n_train)
+    X_other = np.concatenate((X_other1, X_other2))
+
     print(" | Compute generalized winding number")
     Y_other = fast_winding_number_for_meshes(np.array(mesh.vertices), np.array(mesh.faces, dtype=np.int32), X_other)
     print(f" | WN : [{np.min(Y_other)} ; {np.max(Y_other)}]")
 
     X_in = X_other[Y_other>0.5][:n_other]
-    X_out = X_other[Y_other<=0.5][:n_out]
+    X_out = X_other[Y_other<0.5][:n_other]
 
-    print(f"Sampled : {X_in.shape[0] + X_surf.shape[0]} (inside), {X_surf.shape[0]} (surface), {X_out.shape[0]} (outside)")
+    print(f"Sampled : {X_in.shape[0]} (inside), {X_out.shape[0]} (outside), {X_bd.shape[0]} (surface)")
 
     print("\nGenerate test set")
     n_surf_test = min(args.n_test//10, n_surf)
     n_other_test = args.n_test - n_surf_test
 
     print(" | Sampling points on surface")
-    X_surf_test = X_surf[np.random.choice(n_surf,n_surf_test, replace=False), :]
+    X_surf_test = X_bd[np.random.choice(n_surf,n_surf_test, replace=False), :]
     print(" | Sampling uniform distribution in domain")
     X_other_test = M.processing.sampling.sample_bounding_box_3D(domain,n_other_test)
 
@@ -311,13 +313,12 @@ if __name__ == "__main__":
         print("\nGenerate visualization output")
         pc_in = point_cloud_from_array(X_in)
         pc_out = point_cloud_from_array(X_out)
-        pc_surf = point_cloud_from_array(X_surf)
+        pc_surf = point_cloud_from_array(X_bd)
         pc_test = point_cloud_from_array(X_test)
         dist_attr = pc_test.vertices.create_attribute("d", float, dense=True)
         for i in pc_test.id_vertices:
             dist_attr[i] = D_test[i]
 
-    X_in_tot = np.concatenate((X_surf, X_in)) # add surface points to inside
     print("Saving files")
     name = M.utils.get_filename(args.input_mesh)
     if args.visu:
@@ -326,7 +327,8 @@ if __name__ == "__main__":
         M.mesh.save(pc_surf, f"inputs/{name}_pts_surf.xyz")
         M.mesh.save(pc_test, f"inputs/{name}_pts_test.geogram_ascii")
         M.mesh.save(mesh, f"inputs/{name}_surface.stl")
-    np.save(f"inputs/{name}_Xtrain_in.npy", X_in_tot)
+    np.save(f"inputs/{name}_Xtrain_in.npy", X_in)
+    np.save(f"inputs/{name}_Xtrain_bd.npy", X_bd)
     np.save(f"inputs/{name}_Xtrain_out.npy", X_out)
     np.save(f"inputs/{name}_Xtest.npy", X_test)
     np.save(f"inputs/{name}_Ytest.npy", D_test)

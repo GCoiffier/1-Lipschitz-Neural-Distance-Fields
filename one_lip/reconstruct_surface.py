@@ -36,16 +36,18 @@ if __name__ == "__main__":
     pts = np.hstack((np.meshgrid(*L))).swapaxes(0,1).reshape(3,-1).T
     pts = torch.Tensor(pts).to(device)
     pts = DataLoader(TensorDataset(pts), batch_size=args.batch_size)
-    values = torch.Tensor()
+    dist_values = []
 
-    for batch in tqdm(pts, total=len(pts)):
-        v_batch = sdf(batch[0]).cpu()
-        values = torch.concatenate((values, v_batch))
+    for (batch,) in tqdm(pts, total=len(pts)):
+        batch.requires_grad = False
+        v_batch = sdf(batch).cpu()
+        dist_values.append(v_batch.detach().cpu().numpy())
 
-    values = values.reshape((res,res,res)).detach().cpu().numpy()
+    dist_values = np.concatenate(dist_values)
+    dist_values = dist_values.reshape((res,res,res))
 
     for off in args.offset:
-        verts,faces,normals,values = marching_cubes(values, level=off)
+        verts,faces,normals,values = marching_cubes(dist_values, level=off)
         values = values[:, np.newaxis]
         m = M.mesh.RawMeshData()
         m.vertices += list(verts)
@@ -56,6 +58,6 @@ if __name__ == "__main__":
         values_attr = m.vertices.create_attribute("values", float, 1, dense=True)
         values_attr._data = values
 
-        M.mesh.save(m,f"{args.output_name}_{off}.obj")
-        M.mesh.save(m,f"{args.output_name}_{off}.geogram_ascii")
+        M.mesh.save(m,f"{args.output_name}_{round(1000*off)}.obj")
+        M.mesh.save(m,f"{args.output_name}_{round(1000*off)}.geogram_ascii")
         

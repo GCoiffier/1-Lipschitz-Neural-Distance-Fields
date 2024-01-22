@@ -6,10 +6,10 @@ import mouette as M
 import torch
 import numpy as np
 
-from common.dataset import PointCloudDataset2D
+from common.dataset import PointCloudDataset
 from common.model import *
 from common.visualize import *
-from common.training import train
+from common.training import Trainer
 from common.utils import get_device
 
 if __name__ == "__main__":
@@ -20,6 +20,7 @@ if __name__ == "__main__":
     parser.add_argument('-bs',"--batch-size", type=int, default=300, help="Batch size")
     parser.add_argument("-ne", "--epochs", type=int, default=20, help="Number of epochs per iteration")
     parser.add_argument("-cpu", action="store_true")
+    parser.add_argument("-a", "--attach-weight", type=float, default=0.)
     args = parser.parse_args()
 
     #### Config ####
@@ -31,7 +32,8 @@ if __name__ == "__main__":
         test_batch_size = 10000,
         epochs = args.epochs,
         loss_margin = 1e-2, # m
-        loss_regul = 10., # lambda
+        loss_regul = 100., # lambda
+        loss_attach_weight = args.attach_weight,
         optimizer = "adam",
         learning_rate = 1e-3,
         NR_maxiter = 3,
@@ -41,7 +43,7 @@ if __name__ == "__main__":
     print("DEVICE:", config.device)
 
     #### Load dataset ####
-    dataset = PointCloudDataset2D(args.dataset, config)
+    dataset = PointCloudDataset(args.dataset, config)
     plot_domain = dataset.object_BB
     plot_domain.pad(0.5, 0.5)
 
@@ -62,7 +64,8 @@ if __name__ == "__main__":
         pc = point_cloud_from_tensor(dataset.X_train_in.detach().cpu(), dataset.X_train_out.detach().cpu())
         M.mesh.save(pc, os.path.join(config.output_folder, f"pc_{n}.geogram_ascii"))
 
-        train(model, dataset, config)
+        trainer = Trainer(dataset, config)
+        trainer.train(model)
 
         singular_values = parameter_singular_values(model)
         print("Singular values:")

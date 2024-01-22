@@ -128,29 +128,28 @@ if __name__ == "__main__":
         b_edges[i,1,:] = pB
 
     print("Generate train set")
-    n_surf = args.n_train//10
-    n_other = args.n_train - n_surf
+    n_surf = args.n_train//8
 
-    print("  Sampling points")
-    X_surf = M.processing.sampling.sample_points_from_polyline(mesh, n_surf)[:,:2]
-    X_other = M.processing.sampling.sample_bounding_box_2D(domain, n_other)[:,:2]
+    print(" | Sampling points")
+    X_bd = M.processing.sampling.sample_points_from_polyline(mesh, n_surf)[:,:2]
+    X_other = M.processing.sampling.sample_bounding_box_2D(domain, 10*args.n_train)[:,:2]
 
-    print("  Discriminate interior from exterior points")
+    print(" | Discriminate interior from exterior points")
     # Y_other = compute_inside_outside(X_other, b_edges)
     Y_other = compute_distances(X_other, b_edges)
 
-    X_in = X_other[Y_other<-1e-3, :]
+    X_in = X_other[Y_other<-1e-3, :][:args.n_train]
     X_out = X_other[Y_other>1e-2, :]
-    X_in = np.concatenate((X_in, X_surf))
-    X_out = X_out[:X_in.shape[0], :]
+    X_out = X_out[:X_in.shape[0], :] # same number of points inside and outside
+    print(f" | Generated {X_in.shape[0]} (inside), {X_out.shape[0]} (outside), {X_bd.shape[0]} (boundary)")
 
     print("Generate test set")
-    n_test_surf = min(args.n_test//3, X_surf.shape[0])
+    n_test_surf = min(args.n_test//3, X_bd.shape[0])
     n_test_other = args.n_test - n_test_surf
 
     X_test = M.processing.sampling.sample_bounding_box_2D(domain, n_test_other)
     Y_test = compute_distances(X_test, b_edges)
-    X_test = np.concatenate((X_test, X_surf[np.random.choice(X_surf.shape[0], n_test_surf, replace=False), :]))
+    X_test = np.concatenate((X_test, X_bd[np.random.choice(X_bd.shape[0], n_test_surf, replace=False), :]))
     Y_test = np.concatenate((Y_test,np.zeros(n_test_surf)))
     
     if args.visu:
@@ -159,11 +158,15 @@ if __name__ == "__main__":
         in_out_attr = pc_train.vertices.create_attribute("in", int)
         for i in range(X_in.shape[0]):
             pc_train.vertices.append(geom.Vec(X_in[i,0], X_in[i,1], 0.))
-            in_out_attr[i] = 1
+            in_out_attr[i] = -1
+        n = len(pc_train.vertices)
+        for i in range(X_bd.shape[0]):
+            pc_train.vertices.append(geom.Vec(X_bd[i,0], X_bd[i,1], 0.))
+            in_out_attr[n+i] = 0
         n = len(pc_train.vertices)
         for i in range(X_out.shape[0]):
             pc_train.vertices.append(geom.Vec(X_out[i,0], X_out[i,1], 0.))
-            in_out_attr[n+i] = 0
+            in_out_attr[n+i] = 1
 
         pc_test  = M.mesh.PointCloud()
         dist_attr = pc_test.vertices.create_attribute("d", float)
@@ -177,6 +180,7 @@ if __name__ == "__main__":
         M.mesh.save(pc_train, f"inputs/{name}_pts_train.geogram_ascii")
         M.mesh.save(pc_test, f"inputs/{name}_pts_test.geogram_ascii")
     np.save(f"inputs/{name}_Xtrain_in.npy", X_in)
+    np.save(f"inputs/{name}_Xtrain_bd.npy", X_bd)
     np.save(f"inputs/{name}_Xtrain_out.npy", X_out)
     np.save(f"inputs/{name}_Xtest.npy", X_test)
     np.save(f"inputs/{name}_Ytest.npy", Y_test)
