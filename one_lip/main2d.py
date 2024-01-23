@@ -49,8 +49,9 @@ if __name__ == "__main__":
 
     #### Create model and setup trainer
     
-    # archi = [(2,256), (256,256), (256,256), (256,256), (256,1)]
-    archi = [(2,64), (64,64), (64,64), (64,64), (64,1)]
+    archi = [(2,256), (256,256), (256,256), (256,256), (256,1)]
+    # archi = [(2,128), (128,128), (128,128), (128,128), (128,1)]
+    # archi = [(2,64), (64,64), (64,64), (64,64), (64,64), (64,1)]
     # archi = [(2,32), (32,32), (32,32), (32,32), (32,1)]
     
     model = DenseLipNetwork(
@@ -61,8 +62,8 @@ if __name__ == "__main__":
 
     for n in range(config.n_iter):
         print("ITERATION", n+1)
-        pc = point_cloud_from_tensor(dataset.X_train_in.detach().cpu(), dataset.X_train_out.detach().cpu())
-        M.mesh.save(pc, os.path.join(config.output_folder, f"pc_{n}.geogram_ascii"))
+        # pc = point_cloud_from_tensor(dataset.X_train_in.detach().cpu(), dataset.X_train_out.detach().cpu())
+        # M.mesh.save(pc, os.path.join(config.output_folder, f"pc_{n}.geogram_ascii"))
 
         trainer = Trainer(dataset, config)
         trainer.train(model)
@@ -79,4 +80,4 @@ if __name__ == "__main__":
         render_gradient_norm(grad_path, model, plot_domain, config.device)
         model_path = os.path.join(config.output_folder, f"model_{n+1}.pt")
         save_model(model, archi, model_path)
-        dataset.update_complementary_distribution(model, config.NR_maxiter)
+        # dataset.update_complementary_distribution(model, config.NR_maxiter)
