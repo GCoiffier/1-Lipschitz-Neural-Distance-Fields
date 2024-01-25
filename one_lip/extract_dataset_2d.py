@@ -111,6 +111,7 @@ if __name__ == "__main__":
     input_mesh = M.mesh.load(args.input_mesh)
     input_mesh = M.transform.fit_into_unit_cube(input_mesh)
     input_mesh = M.transform.flatten(input_mesh, dim=2) # make sure that z = 0
+    input_mesh = M.transform.translate(input_mesh, M.Vec(-0.5, -0.5, 0.))
 
     if isinstance(input_mesh, M.mesh.SurfaceMesh):
         print("Extract boundary polyline")

@@ -7,7 +7,8 @@ import numpy as np
 import mouette as M
 import torch
 import argparse
-from tqdm import trange
+from tqdm import tqdm
+from torch.utils.data import TensorDataset, DataLoader
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -17,6 +18,7 @@ if __name__ == "__main__":
     parser.add_argument("-d", '--offset', type=float, nargs='+', default=[0.], help="offset of value to print")
     parser.add_argument("-res", "--resolution", type=int, default=800, help="resolution")
     parser.add_argument("-cpu", action="store_true")
+    parser.add_argument("-bs", "--batch-size", type=int, default=5000)
     args = parser.parse_args()
 
     device = get_device(args.cpu)
@@ -33,28 +35,33 @@ if __name__ == "__main__":
     resY = round(resX * domain.height/domain.width)
     X = np.linspace(domain.left, domain.right, resX)
     Y = np.linspace(domain.bottom, domain.top, resY)
+    pts = np.hstack((np.meshgrid(X,Y))).swapaxes(0,1).reshape(2,-1).T
+    pts = torch.Tensor(pts).to(device)
+    pts = DataLoader(TensorDataset(pts), batch_size=args.batch_size)
+    dist_values = []
 
-    img = np.zeros((resX,resY))
+    for (batch,) in tqdm(pts, total=len(pts)):
+        batch.requires_grad = False
+        v_batch = sdf(batch).cpu()
+        dist_values.append(v_batch.detach().cpu().numpy())
 
-    for i in trange(resX):
-        inp = torch.Tensor([[X[i], Y[j]] for j in range(resY)]).to(device)
-        img[i,:] = np.squeeze(sdf(inp).cpu().detach().numpy())
-
+    img = np.concatenate(dist_values).reshape((resX,resY))
     print(np.min(img), np.max(img))
 
     for off in args.offset:
         contours = find_contours(img, level=off)
         polyline = M.mesh.new_polyline()
+        iv = 0
         for cnt in contours:
             # Reproject points in real space instead of pixel space
-            for x,y in cnt:
+            n_cnt = len(cnt)
+            for i,(x,y) in enumerate(cnt):
                 px, py = int(x), int(y)
                 dx, dy = x%1, y%1
                 vx = (1-dx)*X[px] + dx * X[px+1]
                 vy = (1-dy)*Y[py] + dy * Y[py+1]
                 polyline.vertices.append([vx, vy, 0.])
-            n = len(polyline.vertices)
-            for i in range(n):
-                polyline.edges.append(sorted((i,(i+1)%n)))
-        M.mesh.save(polyline, f"{args.output_name}_{off}.mesh")
+                polyline.edges.append(sorted((iv+i, iv+(i+1)%n_cnt)))
+            iv += n_cnt
+        M.mesh.save(polyline, f"{args.output_name}_{round(100*off)}.mesh")
         

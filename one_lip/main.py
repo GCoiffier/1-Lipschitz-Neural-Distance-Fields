@@ -35,7 +35,7 @@ if __name__ == "__main__":
         optimizer = "adam",
         learning_rate = 5e-4,
         NR_maxiter = 3,
-        output_folder = os.path.join("output", args.dataset)
+        output_folder = os.path.join("output", args.output_name if len(args.output_name)>0 else args.dataset)
     )
     os.makedirs(config.output_folder, exist_ok=True)
     print("DEVICE:", config.device)
@@ -50,7 +50,7 @@ if __name__ == "__main__":
     # archi = [(3,256), (256,256), (256,256), (256,256), (256,1)]
     # archi = [(3,128), (128,128), (128,128), (128,128), (128,1)]
     # archi = [(3,64), (64,64), (64,64), (64,64), (64,1)]
-    archi = [(3,32), (32,32), (32,32), (32,32), (32,1)]
+    # archi = [(3,32), (32,32), (32,32), (32,32), (32,1)]
 
     model = DenseLipNetwork(
         archi, group_sort_size=0,
@@ -61,7 +61,11 @@ if __name__ == "__main__":
 
     for n in range(config.n_iter):
         print("ITERATION", n+1)
-        pc = point_cloud_from_tensor(dataset.X_train_in.detach().cpu(), dataset.X_train_out.detach().cpu())
+        pc = point_cloud_from_tensors(
+            dataset.X_train_bd.detach().cpu(), 
+            dataset.X_train_in.detach().cpu(), 
+            dataset.X_train_out.detach().cpu()
+        )
         M.mesh.save(pc, os.path.join(config.output_folder, f"pc_{n}.geogram_ascii"))
 
         trainer = Trainer(dataset, config)

@@ -7,7 +7,7 @@ from .model import *
 
 import mouette as M
 
-class SH_KR:
+class LossHKR:
     """ Hinge Kantorovitch-Rubinstein loss"""
 
     def __init__(self, margin, lbda):
@@ -58,7 +58,7 @@ class Trainer(M.Logger):
         return test_loss
 
     def _train_with_attach(self, model):
-        lossfun_hkr = SH_KR(self.config.loss_margin, self.config.loss_regul)
+        lossfun_hkr = LossHKR(self.config.loss_margin, self.config.loss_regul)
         for epoch in range(self.config.epochs):
             train_loss_hkr = 0.
             train_loss_recons = 0.
@@ -83,7 +83,7 @@ class Trainer(M.Logger):
             print()
 
     def _train_hkr(self, model): 
-        lossfun = SH_KR(self.config.loss_margin, self.config.loss_regul)
+        lossfun = LossHKR(self.config.loss_margin, self.config.loss_regul)
         for epoch in range(self.config.epochs):  # loop over the dataset multiple times
             train_loss = 0.
             for (X_in, X_out) in tqdm(self.dataset.train_loader, total=len(self.dataset)):
@@ -92,6 +92,7 @@ class Trainer(M.Logger):
                 Y_in = model(X_in[0]) # forward computation
                 Y_out = model(X_out[0])
                 loss = torch.sum(lossfun(-Y_in) + lossfun(Y_out))
+                # loss = torch.mean(Y_in) - torch.mean(Y_out)
                 loss.backward() # call back propagation
                 train_loss += loss.detach()
                 self.optimizer.step() 

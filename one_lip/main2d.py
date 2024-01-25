@@ -16,6 +16,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("dataset", type=str)
+    parser.add_argument("-o", "--output-name", type=str, default="")
     parser.add_argument("-n", "--n-iter", type=int, default=20, help="Number of iterations")
     parser.add_argument('-bs',"--batch-size", type=int, default=300, help="Batch size")
     parser.add_argument("-ne", "--epochs", type=int, default=20, help="Number of epochs per iteration")
@@ -37,7 +38,7 @@ if __name__ == "__main__":
         optimizer = "adam",
         learning_rate = 1e-3,
         NR_maxiter = 3,
-        output_folder = os.path.join("output", args.dataset)
+        output_folder = os.path.join("output", args.output_name if len(args.output_name)>0 else args.dataset)
     )
     os.makedirs(config.output_folder, exist_ok=True)
     print("DEVICE:", config.device)
@@ -49,9 +50,9 @@ if __name__ == "__main__":
 
     #### Create model and setup trainer
     
-    archi = [(2,256), (256,256), (256,256), (256,256), (256,1)]
+    # archi = [(2,256), (256,256), (256,256), (256,256), (256,1)]
     # archi = [(2,128), (128,128), (128,128), (128,128), (128,1)]
-    # archi = [(2,64), (64,64), (64,64), (64,64), (64,64), (64,1)]
+    archi = [(2,64), (64,64), (64,64), (64,64), (64,64), (64,1)]
     # archi = [(2,32), (32,32), (32,32), (32,32), (32,1)]
     
     model = DenseLipNetwork(
@@ -62,8 +63,12 @@ if __name__ == "__main__":
 
     for n in range(config.n_iter):
         print("ITERATION", n+1)
-        # pc = point_cloud_from_tensor(dataset.X_train_in.detach().cpu(), dataset.X_train_out.detach().cpu())
-        # M.mesh.save(pc, os.path.join(config.output_folder, f"pc_{n}.geogram_ascii"))
+        pc = point_cloud_from_tensors(
+            dataset.X_train_bd.detach().cpu(), 
+            dataset.X_train_in.detach().cpu(), 
+            dataset.X_train_out.detach().cpu()
+        )
+        M.mesh.save(pc, os.path.join(config.output_folder, f"pc_{n}.geogram_ascii"))
 
         trainer = Trainer(dataset, config)
         trainer.train(model)
@@ -75,9 +80,9 @@ if __name__ == "__main__":
         print()
 
         render_path = os.path.join(config.output_folder, f"render_{n+1}.png")
-        render_sdf(render_path, model, plot_domain, config.device)
+        render_sdf(render_path, model, plot_domain, config.device, res=800, batch_size=config.test_batch_size)
         grad_path = os.path.join(config.output_folder, f"grad_{n+1}.png")
-        render_gradient_norm(grad_path, model, plot_domain, config.device)
+        render_gradient_norm(grad_path, model, plot_domain, config.device, res=800, batch_size=config.test_batch_size)
         model_path = os.path.join(config.output_folder, f"model_{n+1}.pt")
         save_model(model, archi, model_path)
-        # dataset.update_complementary_distribution(model, config.NR_maxiter)
+        dataset.update_complementary_distribution(model, config.NR_maxiter)
