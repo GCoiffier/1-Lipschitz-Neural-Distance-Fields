@@ -84,6 +84,7 @@ class PointCloudDataset(M.Logger):
             if any((self._train_loader_in is None,
                     self._train_loader_out is None, 
                     self._train_loader_bd is None)):
+                print("UPDATE TRAIN LOADER")
                 self._train_loader_in = DataLoader(TensorDataset(self.X_train_in), batch_size=self.config.batch_size, shuffle=True)
                 self._train_loader_out = DataLoader(TensorDataset(self.X_train_out), batch_size=self.config.batch_size, shuffle=True)
                 self._train_loader_bd = DataLoader(TensorDataset(self.X_train_bd), batch_size=self.config.batch_size//8)
@@ -127,19 +128,23 @@ class PointCloudDataset(M.Logger):
             Xt.requires_grad = True
 
             # Compute signed distances
-            y = torch.mean(model(Xt))
-            y.backward()
+            y = model(Xt)
+            ysum = torch.mean(y)
+            ysum.backward()
             
             # retrieve gradient of the function
             grad = Xt.grad
-            grad_norm_squared = torch.sum(grad**2, axis=1).reshape((Xt.shape[0],1))            
+            grad_norm_squared = torch.sum(grad**2, axis=1).reshape((Xt.shape[0],1))
+            
             grad = grad / (grad_norm_squared + 1e-8)
-            target = F.relu(-y + level_set)
-            Xt = Xt + step_size * learning_rate * target * grad
+            target = y + level_set
+            # target = F.relu(target)
+            Xt = Xt - step_size * learning_rate * target * grad
             
             # clipping to domain
             Xt = self.clip_to_domain(Xt)
-
         self.X_train_out = Xt.detach()
-        self._train_loader_out = DataLoader(TensorDataset(self.X_train_out), batch_size=self.config.batch_size, shuffle=True)
+
+        #print(self.X_train_out - old_Xt)
+        self._train_loader_out = None # reset loader
 

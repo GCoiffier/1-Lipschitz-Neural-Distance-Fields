@@ -92,7 +92,6 @@ class Trainer(M.Logger):
                 Y_in = model(X_in[0]) # forward computation
                 Y_out = model(X_out[0])
                 loss = torch.sum(lossfun(-Y_in) + lossfun(Y_out))
-                # loss = torch.mean(Y_in) - torch.mean(Y_out)
                 loss.backward() # call back propagation
                 train_loss += loss.detach()
                 self.optimizer.step() 

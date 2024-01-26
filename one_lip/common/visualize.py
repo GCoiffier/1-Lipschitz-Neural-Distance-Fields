@@ -38,7 +38,7 @@ def render_sdf(path, model, domain : M.geometry.BB2D, device, res=800, batch_siz
     resY = round(res * domain.height/domain.width)
     Y = np.linspace(domain.bottom, domain.top, resY)
 
-    pts = np.hstack((np.meshgrid(X,Y))).reshape(2,-1)
+    pts = np.hstack((np.meshgrid(X,Y))).swapaxes(0,1).reshape(2,-1).T
     pts = torch.Tensor(pts).to(device)
     pts = DataLoader(TensorDataset(pts), batch_size=batch_size)
     dist_values = []
@@ -49,7 +49,8 @@ def render_sdf(path, model, domain : M.geometry.BB2D, device, res=800, batch_siz
         v_batch = model(batch).cpu()
         dist_values.append(v_batch.detach().cpu().numpy())
 
-    img = np.concatenate(dist_values).reshape((res,resY))
+    img = np.concatenate(dist_values).reshape((res,resY)).T
+    img = img[::-1,:]
 
     vmin = np.amin(img)
     vmax = np.amax(img)
@@ -68,7 +69,7 @@ def render_gradient_norm(path, model, domain : M.geometry.BB2D, device, res=800,
     resY = round(res * domain.height/domain.width)
     Y = np.linspace(domain.bottom, domain.top, resY)
 
-    pts = np.hstack((np.meshgrid(X,Y))).reshape(2,-1)
+    pts = np.hstack((np.meshgrid(X,Y))).swapaxes(0,1).reshape(2,-1).T
     pts = torch.Tensor(pts).to(device)
     pts = DataLoader(TensorDataset(pts), batch_size=batch_size)
     grad_norms = []
@@ -79,7 +80,8 @@ def render_gradient_norm(path, model, domain : M.geometry.BB2D, device, res=800,
         y.backward()
         grad_norm = torch.norm(batch.grad, dim=1)
         grad_norms.append(grad_norm.detach().cpu().numpy())
-    img = np.(grad_norms).reshape((res,resY))
+    img = np.concatenate(grad_norms).reshape((res,resY)).T
+    img = img[::-1,:]
     print("GRAD NORM INTERVAL", (np.min(img), np.max(img)))
 
     plt.clf()

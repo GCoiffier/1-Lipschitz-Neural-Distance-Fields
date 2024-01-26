@@ -33,10 +33,11 @@ if __name__ == "__main__":
         test_batch_size = 10000,
         epochs = args.epochs,
         loss_margin = 1e-2, # m
-        loss_regul = 100., # lambda
+        loss_regul = 1., # lambda
         loss_attach_weight = args.attach_weight,
         optimizer = "adam",
         learning_rate = 1e-3,
+        update_distrib = False,
         NR_maxiter = 3,
         output_folder = os.path.join("output", args.output_name if len(args.output_name)>0 else args.dataset)
     )
@@ -51,8 +52,8 @@ if __name__ == "__main__":
     #### Create model and setup trainer
     
     # archi = [(2,256), (256,256), (256,256), (256,256), (256,1)]
-    # archi = [(2,128), (128,128), (128,128), (128,128), (128,1)]
-    archi = [(2,64), (64,64), (64,64), (64,64), (64,64), (64,1)]
+    archi = [(2,128), (128,128), (128,128), (128,128),(128,1)]
+    # archi = [(2,64), (64,64), (64,64), (64,64), (64,1)]
     # archi = [(2,32), (32,32), (32,32), (32,32), (32,1)]
     
     model = DenseLipNetwork(
@@ -61,15 +62,18 @@ if __name__ == "__main__":
 
     print("PARAMETERS:", count_parameters(model))
 
+    pc = point_cloud_from_tensors(
+        dataset.X_train_bd.detach().cpu(), 
+        dataset.X_train_in.detach().cpu(), 
+        dataset.X_train_out.detach().cpu())
+    M.mesh.save(pc, os.path.join(config.output_folder, f"pc_0.geogram_ascii"))
+
     for n in range(config.n_iter):
         print("ITERATION", n+1)
-        pc = point_cloud_from_tensors(
-            dataset.X_train_bd.detach().cpu(), 
-            dataset.X_train_in.detach().cpu(), 
-            dataset.X_train_out.detach().cpu()
-        )
-        M.mesh.save(pc, os.path.join(config.output_folder, f"pc_{n}.geogram_ascii"))
-
+        if n==0: config.loss_regul = 1.
+        if n==1: config.loss_regul = 10.
+        if n==2: config.loss_regul = 100.
+        
         trainer = Trainer(dataset, config)
         trainer.train(model)
 
@@ -85,4 +89,11 @@ if __name__ == "__main__":
         render_gradient_norm(grad_path, model, plot_domain, config.device, res=800, batch_size=config.test_batch_size)
         model_path = os.path.join(config.output_folder, f"model_{n+1}.pt")
         save_model(model, archi, model_path)
-        dataset.update_complementary_distribution(model, config.NR_maxiter)
+
+        if config.update_distrib:
+            dataset.update_complementary_distribution(model, config.NR_maxiter)
+            pc = point_cloud_from_tensors(
+                dataset.X_train_bd.detach().cpu(), 
+                dataset.X_train_in.detach().cpu(), 
+                dataset.X_train_out.detach().cpu())
+            M.mesh.save(pc, os.path.join(config.output_folder, f"pc_{n+1}.geogram_ascii"))

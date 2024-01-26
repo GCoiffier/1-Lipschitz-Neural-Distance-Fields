@@ -34,6 +34,7 @@ if __name__ == "__main__":
         loss_attach_weight = args.attach_weight,
         optimizer = "adam",
         learning_rate = 5e-4,
+        update_distrib = False,
         NR_maxiter = 3,
         output_folder = os.path.join("output", args.output_name if len(args.output_name)>0 else args.dataset)
     )
@@ -47,7 +48,7 @@ if __name__ == "__main__":
 
     #### Create model and setup trainer
     # archi = [(3,512), (512,512), (512,512), (512,512), (512,1)]
-    # archi = [(3,256), (256,256), (256,256), (256,256), (256,1)]
+    archi = [(3,256), (256,256), (256,256), (256,256), (256,1)]
     # archi = [(3,128), (128,128), (128,128), (128,128), (128,1)]
     # archi = [(3,64), (64,64), (64,64), (64,64), (64,1)]
     # archi = [(3,32), (32,32), (32,32), (32,32), (32,1)]
@@ -58,16 +59,18 @@ if __name__ == "__main__":
     ).to(config.device)
 
     print("PARAMETERS:", count_parameters(model))
+    pc = point_cloud_from_tensors(
+        dataset.X_train_bd.detach().cpu(), 
+        dataset.X_train_in.detach().cpu(), 
+        dataset.X_train_out.detach().cpu())
+    M.mesh.save(pc, os.path.join(config.output_folder, "pc_0.geogram_ascii"))
 
     for n in range(config.n_iter):
+        if n==0: config.loss_regul = 1.
+        if n==1: config.loss_regul = 10.
+        if n==2: config.loss_regul = 100.
+    
         print("ITERATION", n+1)
-        pc = point_cloud_from_tensors(
-            dataset.X_train_bd.detach().cpu(), 
-            dataset.X_train_in.detach().cpu(), 
-            dataset.X_train_out.detach().cpu()
-        )
-        M.mesh.save(pc, os.path.join(config.output_folder, f"pc_{n}.geogram_ascii"))
-
         trainer = Trainer(dataset, config)
         trainer.train(model)
         
@@ -78,4 +81,10 @@ if __name__ == "__main__":
         print()
         model_path = os.path.join(config.output_folder, f"model_{n+1}.pt")
         save_model(model, archi, model_path)
-        dataset.update_complementary_distribution(model, config.NR_maxiter)
+        if config.update_distrib:
+            dataset.update_complementary_distribution(model, config.NR_maxiter)
+            pc = point_cloud_from_tensors(
+                dataset.X_train_bd.detach().cpu(), 
+                dataset.X_train_in.detach().cpu(), 
+                dataset.X_train_out.detach().cpu())
+            M.mesh.save(pc, os.path.join(config.output_folder, f"pc_{n+1}.geogram_ascii"))
