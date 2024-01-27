@@ -85,27 +85,17 @@ def generate_circle(n,m):
     Y_test = np.concatenate((Y_test,np.zeros(m_surf)))
     return X_in,X_out,X_bd,X_test,Y_test
 
-def generate_segment(n,m):
-    raise NotImplementedError
-
-def generate_sine(n,m):
-    raise NotImplementedError
-
 def generate_cube(n,m):
     raise NotImplementedError
 
 def generate_sphere(n,m):
     raise NotImplementedError
 
-def generate_spiral(n,m):
-    raise NotImplementedError
-
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("which", type=str,
-        choices=["square", "circle", "segment", "sine", "cube", "sphere", "spiral"])
+        choices=["square", "circle", "cube", "sphere"])
 
     parser.add_argument("-n", "--n-train", type=int, default=20000, \
         help="number of sample points in train set")
@@ -122,16 +112,10 @@ if __name__ == "__main__":
             X_in,X_out,X_bd,X_test,Y_test =  generate_square(args.n_train, args.n_test)
         case "circle":
             X_in,X_out,X_bd,X_test,Y_test =  generate_circle(args.n_train, args.n_test)
-        case "line":
-            X_in,X_out,X_bd,X_test,Y_test =  generate_segment(args.n_train, args.n_test)
-        case "sine":
-            X_in,X_out,X_bd,X_test,Y_test =  generate_sine(args.n_train, args.n_test)
         case "cube":
             X_in,X_out,X_bd,X_test,Y_test =  generate_cube(args.n_train, args.n_test)
         case "sphere":
             X_in,X_out,X_bd,X_test,Y_test =  generate_sphere(args.n_train, args.n_test)
-        case "spiral":
-            X_in,X_out,X_bd,X_test,Y_test =  generate_spiral(args.n_train, args.n_test)
 
     if args.visu:
         print("Generate visualization output")
