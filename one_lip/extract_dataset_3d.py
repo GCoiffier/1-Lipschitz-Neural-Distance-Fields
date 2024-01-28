@@ -260,6 +260,7 @@ if __name__ == "__main__":
     print("Load mesh")
     mesh = M.mesh.load(args.input_mesh)
     mesh = M.transform.fit_into_unit_cube(mesh)
+    mesh = M.transform.translate(mesh, -np.mean(mesh.vertices, axis=0))
     domain = M.geometry.BB3D.of_mesh(mesh)
 
     print("Generate train set")
@@ -269,10 +270,12 @@ if __name__ == "__main__":
     X_bd = M.processing.sampling.sample_points_from_surface(mesh, n_surf)
 
     print(" | Sample uniform distribution in domain")
+    domain.pad(0.05,0.05,0.05)
     X_other1 = M.processing.sampling.sample_bounding_box_3D(domain, 50*args.n_train)
-    domain.pad(0.3,0.3,0.3)
-    X_other2 = M.processing.sampling.sample_bounding_box_3D(domain, 20*args.n_train)
+    domain.pad(0.95,0.95,0.95)
+    X_other2 = M.processing.sampling.sample_bounding_box_3D(domain, 30*args.n_train)
     X_other = np.concatenate((X_other1, X_other2))
+    np.random.shuffle(X_other)
 
     print(" | Compute generalized winding number")
     Y_other = fast_winding_number_for_meshes(np.array(mesh.vertices), np.array(mesh.faces, dtype=np.int32), X_other)
@@ -290,7 +293,7 @@ if __name__ == "__main__":
     print(" | Sampling points on surface")
     X_surf_test = X_bd[np.random.choice(n_surf,n_surf_test, replace=False), :]
     print(" | Sampling uniform distribution in domain")
-    X_other_test = M.processing.sampling.sample_bounding_box_3D(domain,n_other_test)
+    X_other_test = M.processing.sampling.sample_bounding_box_3D(M.geometry.BB3D.of_mesh(mesh,padding=0.1),n_other_test)
 
     print(" | Building face array")
     TRIS = np.zeros((len(mesh.faces), 3, 3))

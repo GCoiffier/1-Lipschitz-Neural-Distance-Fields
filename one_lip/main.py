@@ -14,6 +14,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("dataset", type=str)
+    parser.add_argument("-o", "--output-name", type=str, default="")
     parser.add_argument("-n", "--n-iter", type=int, default=10, help="Number of iterations")
     parser.add_argument('-bs',"--batch-size", type=int, default=100, help="Batch size")
     parser.add_argument("-ne", "--epochs", type=int, default=10, help="Number of epochs per iteration")
@@ -27,13 +28,13 @@ if __name__ == "__main__":
         device = get_device(args.cpu),
         n_iter = args.n_iter,
         batch_size = args.batch_size,
-        test_batch_size = 1000,
+        test_batch_size = 5000,
         epochs = args.epochs,
         loss_margin = 0.01, # m
         loss_regul = 100., # lambda
         loss_attach_weight = args.attach_weight,
         optimizer = "adam",
-        learning_rate = 5e-4,
+        learning_rate = 1e-4,
         update_distrib = False,
         NR_maxiter = 3,
         output_folder = os.path.join("output", args.output_name if len(args.output_name)>0 else args.dataset)
@@ -47,8 +48,10 @@ if __name__ == "__main__":
     plot_domain.pad(0.5, 0.5, 0.5)
 
     #### Create model and setup trainer
+    archi = [(3,1024), (1024,1024), (1024,1024), (1024,1024), (1024,1024), (1024,1024), (1024,1024), (1024,1)]
+    # archi = [(3,512), (512,512), (512,512), (512,512), (512,512), (512,512), (512,512), (512,512), (512,1)]
     # archi = [(3,512), (512,512), (512,512), (512,512), (512,1)]
-    archi = [(3,256), (256,256), (256,256), (256,256), (256,1)]
+    # archi = [(3,256), (256,256), (256,256), (256,256), (256,1)]
     # archi = [(3,128), (128,128), (128,128), (128,128), (128,1)]
     # archi = [(3,64), (64,64), (64,64), (64,64), (64,1)]
     # archi = [(3,32), (32,32), (32,32), (32,32), (32,1)]
@@ -67,8 +70,7 @@ if __name__ == "__main__":
 
     for n in range(config.n_iter):
         if n==0: config.loss_regul = 1.
-        if n==1: config.loss_regul = 10.
-        if n==2: config.loss_regul = 100.
+        if n==1: config.loss_regul = 100.
     
         print("ITERATION", n+1)
         trainer = Trainer(dataset, config)

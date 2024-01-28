@@ -27,12 +27,12 @@ if __name__ == "__main__":
 
     if len(args.output_name)==0:
         args.output_name = args.model.split("/")[-1].split(".pt")[0]
-    if args.range: args.offset = np.linspace(-0.1,0.1,21)
+    if args.range: args.offset = np.linspace(-0.1,0.1,50)
 
     # sdf = load_model(args.model, device).vanilla_export().to(device)
     sdf = load_model(args.model, device).to(device)
 
-    domain = M.geometry.BB3D(-0.5, -0.5, -0.5, 1.5, 1.5, 1.5)
+    domain = M.geometry.BB3D(-1, -1, -1, 1, 1, 1)
     res = args.resolution
     L = [np.linspace(domain.min_coords[i], domain.max_coords[i], res) for i in range(3)]
     pts = np.hstack((np.meshgrid(*L))).swapaxes(0,1).reshape(3,-1).T
@@ -61,8 +61,8 @@ if __name__ == "__main__":
             values_attr = m.vertices.create_attribute("values", float, 1, dense=True)
             values_attr._data = values
 
-            M.mesh.save(m,f"{args.output_name}_{round(1000*off)}.obj")
-            M.mesh.save(m,f"{args.output_name}_{round(1000*off)}.geogram_ascii")
+            # M.mesh.save(m,f"{args.output_name}_{round(1000*off)}.obj")
+            M.mesh.save(m,f"output/{args.output_name}_{round(1000*off)}.geogram_ascii")
         except ValueError:
             continue
         
