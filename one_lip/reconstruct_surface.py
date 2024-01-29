@@ -48,7 +48,7 @@ if __name__ == "__main__":
     dist_values = np.concatenate(dist_values)
     dist_values = dist_values.reshape((res,res,res))
 
-    for off in args.offset:
+    for ioff,off in enumerate(args.offset):
         try:
             verts,faces,normals,values = marching_cubes(dist_values, level=off)
             values = values[:, np.newaxis]
@@ -62,7 +62,7 @@ if __name__ == "__main__":
             values_attr._data = values
 
             # M.mesh.save(m,f"{args.output_name}_{round(1000*off)}.obj")
-            M.mesh.save(m,f"output/{args.output_name}_{round(1000*off)}.geogram_ascii")
+            M.mesh.save(m,f"output/{ioff:02d}_{args.output_name}_{round(1000*off)}.geogram_ascii")
         except ValueError:
             continue
         

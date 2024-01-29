@@ -73,22 +73,24 @@ if __name__ == "__main__":
             id_cnt += id_v
         M.mesh.save(PL, f"{args.output_name}.mesh")
         M.mesh.save(PL, f"{args.output_name}.geogram_ascii")
-
     else:
-        for off in args.offset:
-            contours = find_contours(img, level=off)
-            id_v = 0
-            for cnt in contours:
-                # Reproject points in real space instead of pixel space
-                n_cnt = len(cnt)
-                PL = M.mesh.new_polyline()
-                for i,(x,y) in enumerate(cnt):
-                    px, py = int(x), int(y)
-                    dx, dy = x%1, y%1
-                    vx = (1-dx)*X[px] + dx * X[px+1]
-                    vy = (1-dy)*Y[py] + dy * Y[py+1]
-                    PL.vertices.append([vx, vy, 0.])
-                    PL.edges.append(sorted((id_v+i, id_v+(i+1)%n_cnt)))
-                id_v += n_cnt
-                M.mesh.save(PL, f"{args.output_name}_{round(100*off)}.mesh")
+        for ioff, off in enumerate(args.offset):
+            try:
+                contours = find_contours(img, level=off)
+                id_v = 0
+                for cnt in contours:
+                    # Reproject points in real space instead of pixel space
+                    n_cnt = len(cnt)
+                    PL = M.mesh.new_polyline()
+                    for i,(x,y) in enumerate(cnt):
+                        px, py = int(x), int(y)
+                        dx, dy = x%1, y%1
+                        vx = (1-dx)*X[px] + dx * X[px+1]
+                        vy = (1-dy)*Y[py] + dy * Y[py+1]
+                        PL.vertices.append([vx, vy, 0.])
+                        PL.edges.append(sorted((id_v+i, id_v+(i+1)%n_cnt)))
+                    id_v += n_cnt
+                    M.mesh.save(PL, f"output/{ioff:02d}_{args.output_name}_{round(100*off)}.mesh")
+            except ValueError:
+                continue
         

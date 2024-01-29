@@ -14,6 +14,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("dataset", type=str)
+    parser.add_argument("-o", "--output-name", type=str, default="")
     parser.add_argument("-n", "--n-iter", type=int, default=10, help="Number of iterations")
     parser.add_argument('-bs',"--batch-size", type=int, default=100, help="Batch size")
     parser.add_argument("-ne", "--epochs", type=int, default=10, help="Number of epochs per iteration")
