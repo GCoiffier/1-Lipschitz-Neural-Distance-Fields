@@ -293,8 +293,10 @@ if __name__ == "__main__":
     print(" | Sampling points on surface")
     X_surf_test = X_bd[np.random.choice(n_surf,n_surf_test, replace=False), :]
     print(" | Sampling uniform distribution in domain")
-    X_other_test = M.processing.sampling.sample_bounding_box_3D(M.geometry.BB3D.of_mesh(mesh,padding=0.1),n_other_test)
-
+    X_other_test1 = M.processing.sampling.sample_bounding_box_3D(M.geometry.BB3D.of_mesh(mesh,padding=0.1),n_other_test//2)
+    X_other_test2 = M.processing.sampling.sample_bounding_box_3D(M.geometry.BB3D.of_mesh(mesh,padding=1.),n_other_test//2)
+    X_other_test = np.concatenate((X_other_test1, X_other_test2))
+    
     print(" | Building face array")
     TRIS = np.zeros((len(mesh.faces), 3, 3))
     for i,F in enumerate(mesh.faces):

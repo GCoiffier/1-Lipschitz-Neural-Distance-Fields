@@ -34,7 +34,7 @@ if __name__ == "__main__":
         loss_regul = 100., # lambda
         loss_attach_weight = args.attach_weight,
         optimizer = "adam",
-        learning_rate = 1e-4,
+        learning_rate = 5e-4,
         update_distrib = False,
         NR_maxiter = 3,
         output_folder = os.path.join("output", args.output_name if len(args.output_name)>0 else args.dataset)
@@ -48,8 +48,8 @@ if __name__ == "__main__":
     plot_domain.pad(0.5, 0.5, 0.5)
 
     #### Create model and setup trainer
-    archi = [(3,1024), (1024,1024), (1024,1024), (1024,1024), (1024,1024), (1024,1024), (1024,1024), (1024,1)]
-    # archi = [(3,512), (512,512), (512,512), (512,512), (512,512), (512,512), (512,512), (512,512), (512,1)]
+    # archi = [(3,1024), (1024,1024), (1024,1024), (1024,1024), (1024,1024), (1024,1024), (1024,1024), (1024,1)]
+    archi = [(3,512), (512,512), (512,512), (512,512), (512,512), (512,512), (512,512), (512,512), (512,1)]
     # archi = [(3,512), (512,512), (512,512), (512,512), (512,1)]
     # archi = [(3,256), (256,256), (256,256), (256,256), (256,1)]
     # archi = [(3,128), (128,128), (128,128), (128,128), (128,1)]
