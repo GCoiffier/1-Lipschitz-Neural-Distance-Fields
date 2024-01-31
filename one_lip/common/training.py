@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import autograd
 
 from tqdm import tqdm
 from .model import *
@@ -35,7 +36,10 @@ class Trainer(M.Logger):
     def train(self, model):
         if self.optimizer is None :
             self.optimizer = self.get_optimizer(model)
-        if self.config.attach_weight>0.:
+        
+        if self.config.normal_weight>0.:
+            return self._train_with_normals(model)
+        elif self.config.attach_weight>0.:
            return self._train_with_attach(model)
         else:
             return self._train_hkr(model)
@@ -108,6 +112,57 @@ class Trainer(M.Logger):
                     cb.callOnEndForward(self, model)
 
             self.metrics["train_loss"] = [train_loss_hkr, train_loss_recons]
+            self.metrics["epoch_time"] = time.time() - t0
+            for cb in self.callbacks:
+                cb.callOnEndTrain(self, model)
+            self.evaluate_model(model)
+
+
+    def _train_with_normals(self, model):
+        for epoch in range(self.config.n_epochs):
+            self.metrics["epoch"] = epoch+1
+            for cb in self.callbacks:
+                cb.callOnBeginTrain(self, model)
+            t0 = time.time()
+            lossfun_hkr = LossHKR(self.config.loss_margin, self.config.loss_regul)
+            lossfun_normals = nn.MSELoss()
+            train_loss_hkr = 0.
+            train_loss_recons = 0.
+            train_loss_normals = 0.
+            for (X_in, X_out, X_bd, N_bd) in tqdm(self.dataset.train_loader, total=len(self.dataset)):
+                self.optimizer.zero_grad() # zero the parameter gradients
+                # forward + backward + optimize
+                Y_in = model(X_in[0]) # forward computation
+                Y_out = model(X_out[0])
+                Y_bd = model(X_bd[0])
+
+                ### HKR loss
+                batch_loss_hkr = torch.sum(lossfun_hkr(-Y_in) + lossfun_hkr(Y_out))
+                train_loss_hkr += batch_loss_hkr.detach()
+                
+                ### Reconstruction loss
+                batch_loss_recons = torch.sum(Y_bd**2)
+                train_loss_recons += batch_loss_recons.detach()
+
+                ### Normal fitting loss
+                X_bd[0].requires_grad = True
+                grad = autograd.grad(outputs=model(X_bd[0]), inputs=X_bd[0],
+                        grad_outputs=torch.ones_like(Y_bd).to(self.config.device),
+                        create_graph=True, retain_graph=True)[0]
+                batch_loss_normals = lossfun_normals(grad, N_bd[0])
+                train_loss_normals += batch_loss_normals.detach()
+
+                batch_loss = \
+                    batch_loss_hkr \
+                    + self.config.attach_weight * batch_loss_recons \
+                    + self.config.normal_weight * batch_loss_normals
+                batch_loss.backward() # call back propagation
+                self.optimizer.step() 
+                
+                for cb in self.callbacks:
+                    cb.callOnEndForward(self, model)
+
+            self.metrics["train_loss"] = [train_loss_hkr, train_loss_recons, train_loss_normals]
             self.metrics["epoch_time"] = time.time() - t0
             for cb in self.callbacks:
                 cb.callOnEndTrain(self, model)

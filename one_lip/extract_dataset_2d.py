@@ -3,9 +3,9 @@ from mouette import geometry as geom
 
 import os
 import numpy as np
+from numpy.random import choice
 import argparse
 from numba import jit, prange
-from tqdm import tqdm
 
 @jit(cache=True, nopython=True)
 def cross(A,B):
@@ -88,21 +88,35 @@ def compute_inside_outside(Q, PL):
         Y[i] = count_ray_parity(Q[i,:], PL)
     return Y
 
+def sample_points_and_normals(mesh, n_pts):
+    sampled_pts = np.zeros((n_pts, 2))
+    lengths = M.attributes.edge_length(mesh, persistent=False).as_array()
+    lengths /= np.sum(lengths)
+    if len(mesh.edges)==1:
+        edges = [0]*n_pts
+    else:
+        edges = choice(len(mesh.edges), size=n_pts, p=lengths)
+    sampled_normals = np.zeros((n_pts,2))
+    for i,e in enumerate(edges):
+        pA,pB = (mesh.vertices[_v] for _v in mesh.edges[e])
+        ni = M.Vec.normalized(pB - pA)
+        sampled_normals[i,:] = np.array([ni.y, -ni.x])
+        t = np.random.random()
+        pt = t*pA + (1-t)*pB
+        sampled_pts[i,:] = pt[:2] 
+    return sampled_pts, sampled_normals
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("input_mesh", type=str, \
         help="path to the input mesh")
-
-    parser.add_argument("-n", "--n-train", type=int, default=20000, \
-        help="number of sample points in train set")
-
-    parser.add_argument("-m", "--n-test", type=int, default=1000, \
-        help="number of sample points in test set")
-    
+    parser.add_argument("--unsigned", action="store_true")
+    parser.add_argument("-no", "--n-train", type=int, default=10000)
+    parser.add_argument("-nb", "--n-boundary", type=int, default=5000)
+    parser.add_argument("-nt", "--n-test",  type=int, default=3000)
+    parser.add_argument("-nts", "--n-test-boundary", type=int, default=1000)
     parser.add_argument("-visu", help="generates visualization point cloud", action="store_true")
-
     args = parser.parse_args()
 
     os.makedirs("inputs", exist_ok=True)
@@ -111,7 +125,7 @@ if __name__ == "__main__":
     input_mesh = M.mesh.load(args.input_mesh)
     input_mesh = M.transform.fit_into_unit_cube(input_mesh)
     input_mesh = M.transform.flatten(input_mesh, dim=2) # make sure that z = 0
-    input_mesh = M.transform.translate(input_mesh, M.Vec(-0.5, -0.5, 0.))
+    input_mesh = M.transform.translate_to_origin(input_mesh)
 
     if isinstance(input_mesh, M.mesh.SurfaceMesh):
         print("Extract boundary polyline")
@@ -129,29 +143,25 @@ if __name__ == "__main__":
         b_edges[i,1,:] = pB
 
     print("Generate train set")
-    n_surf = args.n_train//8
-
     print(" | Sampling points")
-    X_bd = M.processing.sampling.sample_points_from_polyline(mesh, n_surf)[:,:2]
-    X_other = M.processing.sampling.sample_bounding_box_2D(domain, 10*args.n_train)[:,:2]
-
-    print(" | Discriminate interior from exterior points")
-    # Y_other = compute_inside_outside(X_other, b_edges)
-    Y_other = compute_distances(X_other, b_edges)
-
-    X_in = X_other[Y_other<-1e-3, :][:args.n_train]
-    X_out = X_other[Y_other>1e-2, :]
-    X_out = X_out[:X_in.shape[0], :] # same number of points inside and outside
+    X_bd, N_bd = sample_points_and_normals(mesh, args.n_boundary)
+    mult = 20
+    ok = False
+    while not ok:
+        X_other = M.processing.sampling.sample_bounding_box_2D(domain, mult*args.n_train)[:,:2]
+        Y_other = compute_distances(X_other, b_edges)
+        X_in = X_other[Y_other<-1e-3, :][:args.n_train]
+        X_out = X_other[Y_other>1e-2, :][:args.n_train]
+        ok = (X_in.shape[0] == args.n_train and X_out.shape[0] == args.n_train)
+        mult *= 2
     print(f" | Generated {X_in.shape[0]} (inside), {X_out.shape[0]} (outside), {X_bd.shape[0]} (boundary)")
 
     print("Generate test set")
-    n_test_surf = min(args.n_test//3, X_bd.shape[0])
-    n_test_other = args.n_test - n_test_surf
-
-    X_test = M.processing.sampling.sample_bounding_box_2D(domain, n_test_other)
+    args.n_test_boundary = min(args.n_test_boundary, args.n_boundary)
+    X_test = M.processing.sampling.sample_bounding_box_2D(domain, args.n_test)
     Y_test = compute_distances(X_test, b_edges)
-    X_test = np.concatenate((X_test, X_bd[np.random.choice(X_bd.shape[0], n_test_surf, replace=False), :]))
-    Y_test = np.concatenate((Y_test,np.zeros(n_test_surf)))
+    X_test = np.concatenate((X_test, X_bd[np.random.choice(X_bd.shape[0], args.n_test_boundary, replace=False), :]))
+    Y_test = np.concatenate((Y_test,np.zeros(args.n_test_boundary)))
     
     if args.visu:
         print("Generate visualization output")
@@ -175,13 +185,22 @@ if __name__ == "__main__":
             pc_test.vertices.append(geom.Vec(X_test[i,0], X_test[i,1], 0.))
             dist_attr[i] = Y_test[i]
 
+        nrml_poly = M.mesh.PolyLine()
+        for i in range(X_bd.shape[0]):
+            p1 = geom.Vec(X_bd[i,0], X_bd[i,1], 0.)
+            p2 = p1 + 0.1*M.Vec(N_bd[i,0], N_bd[i,1], 0.)
+            nrml_poly.vertices += [p1, p2]
+            nrml_poly.edges.append((2*i, 2*i+1))
+
     print("Saving files")
     name = M.utils.get_filename(args.input_mesh)
     if args.visu:
         M.mesh.save(pc_train, f"inputs/{name}_pts_train.geogram_ascii")
         M.mesh.save(pc_test, f"inputs/{name}_pts_test.geogram_ascii")
+        M.mesh.save(nrml_poly,f"inputs/{name}_normals.mesh")
     np.save(f"inputs/{name}_Xtrain_in.npy", X_in)
-    np.save(f"inputs/{name}_Xtrain_bd.npy", X_bd)
     np.save(f"inputs/{name}_Xtrain_out.npy", X_out)
+    np.save(f"inputs/{name}_Xtrain_bd.npy", X_bd)
+    np.save(f"inputs/{name}_Normals_bd.npy", N_bd)
     np.save(f"inputs/{name}_Xtest.npy", X_test)
     np.save(f"inputs/{name}_Ytest.npy", Y_test)
