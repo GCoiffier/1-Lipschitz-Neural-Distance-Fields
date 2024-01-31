@@ -3,23 +3,41 @@ from mouette import geometry as geom
 
 import os
 import numpy as np
+from numpy.random import choice
 import argparse
-from numba import jit, prange
 from tqdm import tqdm
 import cmath
+
+def sample_points_and_normals(mesh, n_pts):
+    sampled_pts = np.zeros((n_pts, 2))
+    lengths = M.attributes.edge_length(mesh, persistent=False).as_array()
+    lengths /= np.sum(lengths)
+    if len(mesh.edges)==1:
+        edges = [0]*n_pts
+    else:
+        edges = choice(len(mesh.edges), size=n_pts, p=lengths)
+    sampled_normals = np.zeros((n_pts,2))
+    for i,e in enumerate(edges):
+        pA,pB = (mesh.vertices[_v] for _v in mesh.edges[e])
+        ni = M.Vec.normalized(pB - pA)
+        sampled_normals[i,:] = np.array([ni.y, -ni.x])
+        t = np.random.random()
+        pt = t*pA + (1-t)*pB
+        sampled_pts[i,:] = pt[:2] 
+    return sampled_pts, sampled_normals
 
 def generate_square(n_out, n_surf, n_test):
     SIDE = 0.8
     square = M.geometry.BB2D(- SIDE/2, -SIDE/2, SIDE/2, SIDE/2)
     square_mesh = M.mesh.RawMeshData()
     square_mesh.vertices += [
-        [square.left, square.bottom, 0.],
-        [square.right, square.bottom, 0.],
-        [square.right, square.top, 0.],
-        [square.left, square.top, 0.]
+        M.Vec(square.left, square.bottom, 0.),
+        M.Vec(square.right, square.bottom, 0.),
+        M.Vec(square.right, square.top, 0.),
+        M.Vec(square.left, square.top, 0.)
     ]
-    square_mesh.edges += [(0,1), (0,3), (1,2), (2,3)]
-    square_mesh = M.mesh.PolyLine(square_mesh)
+    square_mesh.edges += [(0,1), (1,2), (2,3), (3,0)]
+    # square_mesh = M.mesh.PolyLine(square_mesh)
 
     def distance_to_square(x):
         d = np.array(abs(x) - np.array([SIDE/2,SIDE/2]))
@@ -28,7 +46,7 @@ def generate_square(n_out, n_surf, n_test):
     print("Generate train set")
     domain = M.geometry.BB2D(-1.,-1.,1.,1.)
     print(" | Sampling points")
-    X_bd = M.processing.sampling.sample_points_from_polyline(square_mesh, n_surf)[:,:2]
+    X_bd, N_bd = sample_points_and_normals(square_mesh, n_surf)
     X_other = M.processing.sampling.sample_bounding_box_2D(domain, 10*n_out)[:,:2]
     print(" | Discriminate interior from exterior points")
     D = np.array([distance_to_square(x) for x in X_other])
@@ -45,7 +63,7 @@ def generate_square(n_out, n_surf, n_test):
     Y_test = np.array([distance_to_square(x) for x in X_test])
     X_test = np.concatenate((X_test, X_bd[np.random.choice(X_bd.shape[0], n_test_surf, replace=False), :]))
     Y_test = np.concatenate((Y_test,np.zeros(n_test_surf)))
-    return X_in,X_out,X_bd,X_test,Y_test
+    return X_in,X_out,X_bd,N_bd,X_test,Y_test
 
 
 def generate_square_no_interior(n_train,n_test):
@@ -93,6 +111,7 @@ def generate_circle(n_out, n_surf, n_test):
     angles = np.random.random(n_surf)*2*np.pi
     X_bd = [cmath.rect(RADIUS,ang) for ang in angles]
     X_bd = np.array([[x.real, x.imag] for x in X_bd]) # convert from complexes to vec2
+    N_bd = X_bd/np.linalg.norm(X_bd,axis=1).reshape((-1,1))
     X_other = M.processing.sampling.sample_bounding_box_2D(domain, 10*n_out)[:,:2]
 
     print(" | Discriminate interior from exterior points")    
@@ -103,19 +122,19 @@ def generate_circle(n_out, n_surf, n_test):
     print(f" | Generated {X_in.shape[0]} (inside), {X_out.shape[0]} (outside), {X_bd.shape[0]} (boundary)")
 
     print("Generate test set")
-    n_test_surf  = min(n_test//4, X_bd.shape[0])
+    n_test_surf  = n_test//4
     n_test_other = n_test - n_test_surf
 
     X_test = M.processing.sampling.sample_bounding_box_2D(domain, n_test_other)
     Y_test = np.array([distance_to_circle(x) for x in X_test])
 
-    angles = np.random.random(n_surf)*2*np.pi
-    X_bd = [cmath.rect(RADIUS,ang) for ang in angles]
-    X_bd = np.array([[x.real, x.imag] for x in X_bd]) # convert from complexes to vec2
+    angles = np.random.random(n_test_surf)*2*np.pi
+    X_test_bd = [cmath.rect(RADIUS,ang) for ang in angles]
+    X_test_bd = np.array([[x.real, x.imag] for x in X_test_bd]) # convert from complexes to vec2
 
-    X_test = np.concatenate((X_test, X_bd[np.random.choice(X_bd.shape[0], n_test_surf, replace=False), :]))
+    X_test = np.concatenate((X_test, X_test_bd))
     Y_test = np.concatenate((Y_test,np.zeros(n_test_surf)))
-    return X_in,X_out,X_bd,X_test,Y_test
+    return X_in,X_out,X_bd,N_bd,X_test,Y_test
 
 
 def generate_circle_no_interior(n_train, n_test):
@@ -183,7 +202,7 @@ if __name__ == "__main__":
 
     parser.add_argument("-u", "--unsigned", action="store_true")
 
-    parser.add_argument("-n", "--n-train", type=int, default=20000,
+    parser.add_argument("-no", "--n-train", type=int, default=20000,
         help="number of sample points in inside and outside distributions")
 
     parser.add_argument("-ni", "--n-surface", type=int, default=10000, 
@@ -201,13 +220,13 @@ if __name__ == "__main__":
             if args.unsigned:
                 X_on,X_out,X_test,Y_test = generate_square_no_interior(args.n_train, args.n_test)
             else:
-                X_in,X_out,X_bd,X_test,Y_test =  generate_square(args.n_train, args.n_surface, args.n_test)
+                X_in,X_out,X_bd,N_bd,X_test,Y_test =  generate_square(args.n_train, args.n_surface, args.n_test)
         
         case "circle":
             if args.unsigned:
                 X_on,X_out,X_test,Y_test = generate_circle_no_interior(args.n_train, args.n_test)
             else:
-                X_in,X_out,X_bd,X_test,Y_test =  generate_circle(args.n_train, args.n_surface, args.n_test)
+                X_in,X_out,X_bd,N_bd,X_test,Y_test =  generate_circle(args.n_train, args.n_surface, args.n_test)
         
         case "segment":
             args.unsigned = True
@@ -245,6 +264,13 @@ if __name__ == "__main__":
             for i in range(X_out.shape[0]):
                 pc_train.vertices.append(geom.Vec(X_out[i,0], X_out[i,1], 0.))
                 in_out_attr[n+i] = 1
+       
+            nrml_poly = M.mesh.PolyLine()
+            for i in range(X_bd.shape[0]):
+                p1 = geom.Vec(X_bd[i,0], X_bd[i,1], 0.)
+                p2 = p1 + 0.1*M.Vec(N_bd[i,0], N_bd[i,1], 0.)
+                nrml_poly.vertices += [p1, p2]
+                nrml_poly.edges.append((2*i, 2*i+1))
 
         pc_test  = M.mesh.PointCloud()
         dist_attr = pc_test.vertices.create_attribute("d", float)
@@ -252,16 +278,20 @@ if __name__ == "__main__":
             pc_test.vertices.append(geom.Vec(X_test[i,0], X_test[i,1], 0.))
             dist_attr[i] = Y_test[i]
 
+
     print("Saving files")
     if args.visu:
         M.mesh.save(pc_train, f"inputs/{args.which}_pts_train.geogram_ascii")
         M.mesh.save(pc_test, f"inputs/{args.which}_pts_test.geogram_ascii")
+        if not args.unsigned:
+            M.mesh.save(nrml_poly,f"inputs/{args.which}_normals.mesh")
 
     if args.unsigned:
         np.save(f"inputs/{args.which}_Xtrain_on.npy", X_on)
     else:
         np.save(f"inputs/{args.which}_Xtrain_in.npy", X_in)
         np.save(f"inputs/{args.which}_Xtrain_bd.npy", X_bd)
+        np.save(f"inputs/{args.which}_Normals_bd.npy", N_bd)
     np.save(f"inputs/{args.which}_Xtrain_out.npy", X_out)
     np.save(f"inputs/{args.which}_Xtest.npy", X_test)
     np.save(f"inputs/{args.which}_Ytest.npy", Y_test)
