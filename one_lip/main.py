@@ -4,9 +4,11 @@ from types import SimpleNamespace
 
 import mouette as M
 
+from common.config import Config
 from common.dataset import PointCloudDataset
 from common.model import *
-from common.visualize import *
+from common.callback import *
+from common.visualize import point_cloud_from_tensors
 from common.training import Trainer
 from common.utils import get_device
 
@@ -23,20 +25,19 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     #### Config ####
-    config = SimpleNamespace(
+    config = Config(
         dim = 3,
         device = get_device(args.cpu),
-        n_iter = args.n_iter,
+        n_epochs = args.epochs,
+        checkpoint_freq = args.checkpoint_freq,
         batch_size = args.batch_size,
-        test_batch_size = 5000,
-        epochs = args.epochs,
-        loss_margin = 0.01, # m
-        loss_regul = 100., # lambda
-        loss_attach_weight = args.attach_weight,
+        test_batch_size = args.test_batch_size,
+        loss_margin = 1e-2,
+        loss_regul = 100.,
+        attach_weight = args.attach_weight,
+        normal_weight = args.normal_weight,
         optimizer = "adam",
         learning_rate = 5e-4,
-        update_distrib = False,
-        NR_maxiter = 3,
         output_folder = os.path.join("output", args.output_name if len(args.output_name)>0 else args.dataset)
     )
     os.makedirs(config.output_folder, exist_ok=True)
@@ -63,30 +64,16 @@ if __name__ == "__main__":
 
     print("PARAMETERS:", count_parameters(model))
     pc = point_cloud_from_tensors(
-        dataset.X_train_bd.detach().cpu(), 
         dataset.X_train_in.detach().cpu(), 
-        dataset.X_train_out.detach().cpu())
+        dataset.X_train_out.detach().cpu(),
+        dataset.X_train_bd.detach().cpu())
     M.mesh.save(pc, os.path.join(config.output_folder, "pc_0.geogram_ascii"))
 
-    for n in range(config.n_iter):
-        if n==0: config.loss_regul = 1.
-        if n==1: config.loss_regul = 100.
-    
-        print("ITERATION", n+1)
-        trainer = Trainer(dataset, config)
-        trainer.train(model)
-        
-        singular_values = parameter_singular_values(model)
-        print("Singular values:")
-        for sv in singular_values:
-            print(sv)
-        print()
-        model_path = os.path.join(config.output_folder, f"model_{n+1}.pt")
-        save_model(model, archi, model_path)
-        if config.update_distrib:
-            dataset.update_complementary_distribution(model, config.NR_maxiter)
-            pc = point_cloud_from_tensors(
-                dataset.X_train_bd.detach().cpu(), 
-                dataset.X_train_in.detach().cpu(), 
-                dataset.X_train_out.detach().cpu())
-            M.mesh.save(pc, os.path.join(config.output_folder, f"pc_{n+1}.geogram_ascii"))
+    trainer = Trainer(dataset, config)
+    trainer.add_callbacks(
+        LoggerCB(os.path.join(config.output_folder, "log.txt")),
+        CheckpointCB(),
+        # ComputeSingularValuesCB(),
+        UpdateHkrRegulCB({1 : 1., 3 : 10., 6: 100.}) 
+    )
+    trainer.train(model)

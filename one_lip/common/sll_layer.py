@@ -13,7 +13,7 @@ def safe_inv(x):
 
 class SDPBasedLipschitzDense(nn.Module):
 
-    def __init__(self, in_features, out_features, inner_dim, **kwargs):
+    def __init__(self, in_features, out_features, inner_dim=-1, **kwargs):
         super().__init__()
 
         inner_dim = inner_dim if inner_dim != -1 else in_features

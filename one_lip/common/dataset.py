@@ -6,6 +6,8 @@ import torch
 from torch.utils.data import TensorDataset, DataLoader
 from torch.nn import functional as F
 
+from .utils import get_BB
+
 class PointCloudDataset(M.Logger):
 
     def __init__(self, name, config):
@@ -48,7 +50,7 @@ class PointCloudDataset(M.Logger):
                 f"Outside: {self.X_train_out.shape}\n", 
                 f"Boundary: {self.X_train_bd.shape}\n", 
                 f"Test: {self.X_test.shape}")
-        if not self.config.loss_attach_weight>0.:
+        if not self.config.attach_weight>0.:
             # merge X_in and X_bd
             n = self.X_train_in.shape[0] - self.X_train_bd.shape[0]
             self.X_train_in = torch.concatenate((self.X_train_in[:n], self.X_train_bd))
@@ -57,30 +59,18 @@ class PointCloudDataset(M.Logger):
     @property
     def object_BB(self):
         if self._object_bb is None :
-            if self.X_train_in is None : return None
-            vmin = torch.min(self.X_train_bd, dim=0)[0].cpu()
-            vmax = torch.max(self.X_train_bd, dim=0)[0].cpu() 
-            if self.config.dim == 2:
-                self._object_bb = M.geometry.BB2D(float(vmin[0]), float(vmin[1]), float(vmax[0]), float(vmax[1]))
-            elif self.config.dim == 3:
-                self._object_bb = M.geometry.BB3D(*vmin, *vmax)
+            self._object_bb = get_BB(self.X_train_bd, self.config.dim)
         return self._object_bb
 
     @property
     def domain(self):
         if self._domain is None :
-            if self.X_train_in is None : return None
-            vmin = torch.min(self.X_train_out, dim=0)[0].cpu()
-            vmax = torch.max(self.X_train_out, dim=0)[0].cpu()
-            if self.config.dim==2: 
-                self._domain = M.geometry.BB2D(float(vmin[0]), float(vmin[1]), float(vmax[0]), float(vmax[1])) 
-            elif self.config.dim==3:
-                self._domain = M.geometry.BB3D(*vmin, *vmax)
+            self._domain = get_BB(self.X_train_out, self.config.dim)
         return self._domain
 
     @property
     def train_loader(self):
-        if self.config.loss_attach_weight>0.:
+        if self.config.attach_weight>0.:
             if any((self._train_loader_in is None,
                     self._train_loader_out is None, 
                     self._train_loader_bd is None)):
@@ -148,3 +138,66 @@ class PointCloudDataset(M.Logger):
         #print(self.X_train_out - old_Xt)
         self._train_loader_out = None # reset loader
 
+
+class PointCloudDataset_NoInterior(M.Logger):
+
+    def __init__(self, name, config):
+        super().__init__("Dataset", verbose=True)
+        self.paths = {
+            "Xtrain_on" : os.path.join("inputs", f"{name}_Xtrain_on.npy"),
+            "Xtrain_out" : os.path.join("inputs", f"{name}_Xtrain_out.npy"),
+            "Xtest" : os.path.join("inputs", f"{name}_Xtest.npy"),
+            "Ytest" : os.path.join("inputs", f"{name}_Ytest.npy")
+        }
+        self.config = config
+
+        self._object_bb = None
+        self._domain = None
+
+        # Load data
+        self.log("Loading dataset...")
+        self.X_train_on = np.load(self.paths["Xtrain_on"])
+        self.X_train_on = torch.Tensor(self.X_train_on).to(self.config.device)
+        self._train_loader_on = None
+
+        self.X_train_out = np.load(self.paths["Xtrain_out"])
+        self.X_train_out = torch.Tensor(self.X_train_out).to(self.config.device)
+        self._train_loader_out = None
+
+        self.X_test = np.load(self.paths["Xtest"])
+        self.Y_test = np.load(self.paths["Ytest"]).reshape((self.X_test.shape[0], 1))
+        self.X_test = torch.Tensor(self.X_test).to(self.config.device)
+        self.Y_test = torch.Tensor(self.Y_test).to(self.config.device)
+        test_data = TensorDataset(self.X_test, self.Y_test)
+        self.test_loader = DataLoader(test_data, batch_size=self.config.test_batch_size)
+
+        self.log(f"Succesfully loaded:\n", 
+                f"On: {self.X_train_on.shape}\n", 
+                f"Outside: {self.X_train_out.shape}\n", 
+                f"Test: {self.X_test.shape}")
+
+    @property
+    def object_BB(self):
+        if self._object_bb is None :
+            self._object_bb = get_BB(self.X_train_on, self.config.dim)
+        return self._object_bb
+
+    @property
+    def domain(self):
+        if self._domain is None :
+            self._domain = get_BB(self.X_train_out, self.config.dim)
+        return self._domain
+
+    @property
+    def train_loader(self):
+        if self._train_loader_on is None or self._train_loader_out is None:
+            self._train_loader_on = DataLoader(TensorDataset(self.X_train_on), batch_size=self.config.batch_size, shuffle=True)
+            self._train_loader_out = DataLoader(TensorDataset(self.X_train_out), batch_size=self.config.batch_size, shuffle=True)
+        return zip(self._train_loader_on, self._train_loader_out)
+
+    @property
+    def train_size(self):
+        return self.X_train_on.shape[0] // self.config.batch_size
+    
+    def __len__(self):
+        return self.train_size

@@ -26,21 +26,37 @@ if __name__ == "__main__":
     #### Load points ####
     points = np.load(args.points)
     print("Loaded point array of shape", points.shape)
-    sdf = load_model(args.model)
+    sdf = load_model(args.model, device)
     print(f"Loaded SDF model ({count_parameters(sdf)} parameters)")
 
     data = DataLoader(torch.Tensor(points), batch_size=args.batch_size, shuffle=False)
     distances = []
     gradients = []
-    for (batch,) in tqdm(data, total=len(data)):
+    for batch in tqdm(data, total=len(data)):
         batch.requires_grad = True
-        y = torch.sum(sdf(batch))
-        y.backward()
+        y = sdf(batch)
+        ysum = torch.sum(y)
+        ysum.backward()
         distances.append(y.detach().cpu().numpy())
         gradients.append(batch.grad.detach().cpu().numpy())
     
-    distances = np.concatenate(distances)
+    distances = np.squeeze(np.concatenate(distances))
     gradients = np.concatenate(gradients, axis=0)
-
-    print(np.min(distances), np.max(distances))
     print(distances.shape, gradients.shape)
+
+    out_point_cloud = M.mesh.new_point_cloud()
+    out_point_cloud.vertices += [pt for pt in points]
+
+    out_grad = M.mesh.new_polyline()
+    for iv in range(points.shape[0]):
+        v1 = points[iv,:]
+        v2 = v1 + 0.01*gradients[iv,:]
+        out_grad.vertices += [v1,v2]
+        out_grad.edges.append((2*iv,2*iv+1))
+
+    dist_attr = out_point_cloud.vertices.create_attribute("dist", float)
+    for v in out_point_cloud.id_vertices:
+        dist_attr[v] = distances[v]
+
+    M.mesh.save(out_grad, os.path.join(output_folder, "grad.mesh"))
+    M.mesh.save(out_point_cloud, os.path.join(output_folder, "point_cloud.geogram_ascii"))

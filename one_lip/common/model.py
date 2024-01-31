@@ -19,19 +19,21 @@ def DenseLipNetwork(
     widths:list, 
     group_sort_size:int=0, 
     k_coeff_lip:float=1., 
-    niter_spectral:int=3, 
+    niter_spectral:int=3,
     niter_bjorck:int=15
 ):
     layers = []
-    activation = torchlip.FullSort() if group_sort_size == 0 else torchlip.GroupSort(group_sort_size)
+    activation = torchlip.FullSort if group_sort_size == 0 else lambda : torchlip.GroupSort(group_sort_size)
     for ilayer, (w_in, w_out) in enumerate(widths):
         if w_out==1:
             layers.append(torchlip.FrobeniusLinear(w_in, w_out))
         else:
             layers.append(torchlip.SpectralLinear(w_in, w_out, niter_spectral=niter_spectral, niter_bjorck=niter_bjorck))
-            layers.append(activation)
+            layers.append(activation())
     model = torchlip.Sequential(*layers, k_coef_lip=k_coeff_lip)
+    model.archi = widths
     return model
+
 
 def MultiLayerPerceptron(widths, activ=nn.ReLU):
     layers = []
@@ -39,5 +41,6 @@ def MultiLayerPerceptron(widths, activ=nn.ReLU):
         layers.append(nn.Linear(w_in,w_out))
         layers.append(activ())
     model = nn.Sequential(*layers)
+    model.archi = widths
     return model
     

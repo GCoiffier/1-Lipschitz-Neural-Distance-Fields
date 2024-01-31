@@ -13,24 +13,23 @@ def point_cloud_from_array(X):
     pc.vertices += list(X)
     return pc
 
-def point_cloud_from_tensors(Xbd, Xin, Xout) -> M.mesh.PointCloud:
+def point_cloud_from_tensors(Xin, Xout, Xbd=None) -> M.mesh.PointCloud:
     pc = M.mesh.new_point_cloud()
-    if Xin.shape[1]==2:
-        # add z=0 to coordinates
-        pc.vertices += list(np.pad(Xbd,((0,0),(0,1)))) 
-        pc.vertices += list(np.pad(Xin,((0,0),(0,1)))) 
-        pc.vertices += list(np.pad(Xout,((0,0),(0,1))))
+    pc_in = point_cloud_from_array(Xin)
+    pc_out = point_cloud_from_array(Xout)
+    if Xbd is not None:
+        pc_bd = point_cloud_from_array(Xbd)
+        pc = M.mesh.merge([pc_in, pc_out, pc_bd])
     else:
-        pc.vertices += list(Xbd)
-        pc.vertices += list(Xin)
-        pc.vertices += list(Xout)
-    attr = pc.vertices.create_attribute("in", int)
-    n = Xbd.shape[0]
-    for i in range(Xin.shape[0]):
-        attr[n+i] = -1
-    n+=Xin.shape[0]
+        pc = M.mesh.merge([pc_in, pc_out])
+    attr = pc.vertices.create_attribute("in", int, default_value=-1, dense=True)
+    n = Xin.shape[0]
     for i in range(Xout.shape[0]):
-        attr[n+1] = 1
+        attr[n+i] = 1
+    if Xbd is not None:
+        n = Xin.shape[0] + Xout.shape[0]
+        for i in range(Xbd.shape[0]):
+            attr[n+1] = 0
     return pc
 
 def render_sdf(path, model, domain : M.geometry.BB2D, device, res=800, batch_size=1000):
@@ -44,6 +43,7 @@ def render_sdf(path, model, domain : M.geometry.BB2D, device, res=800, batch_siz
     dist_values = []
 
     dist_values = []
+    print()
     for (batch,) in tqdm(pts, total=len(pts)):
         batch.requires_grad = False
         v_batch = model(batch).cpu()
@@ -73,7 +73,7 @@ def render_gradient_norm(path, model, domain : M.geometry.BB2D, device, res=800,
     pts = torch.Tensor(pts).to(device)
     pts = DataLoader(TensorDataset(pts), batch_size=batch_size)
     grad_norms = []
-
+    print()
     for (batch,) in tqdm(pts, total=len(pts)):
         batch.requires_grad = True
         y = torch.sum(model(batch))
