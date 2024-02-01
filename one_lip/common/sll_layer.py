@@ -10,10 +10,9 @@ def safe_inv(x):
     x_inv[mask] = 0
     return x_inv
 
-
 class SDPBasedLipschitzDense(nn.Module):
 
-    def __init__(self, in_features, out_features, inner_dim=-1, **kwargs):
+    def __init__(self, in_features, inner_dim=-1, **kwargs):
         super().__init__()
 
         inner_dim = inner_dim if inner_dim != -1 else in_features

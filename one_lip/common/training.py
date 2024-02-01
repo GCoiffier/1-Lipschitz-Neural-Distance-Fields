@@ -111,7 +111,7 @@ class Trainer(M.Logger):
                 for cb in self.callbacks:
                     cb.callOnEndForward(self, model)
 
-            self.metrics["train_loss"] = [train_loss_hkr, train_loss_recons]
+            self.metrics["train_loss"] = [float(x) for x in (train_loss_hkr, train_loss_recons)]
             self.metrics["epoch_time"] = time.time() - t0
             for cb in self.callbacks:
                 cb.callOnEndTrain(self, model)
@@ -125,7 +125,6 @@ class Trainer(M.Logger):
                 cb.callOnBeginTrain(self, model)
             t0 = time.time()
             lossfun_hkr = LossHKR(self.config.loss_margin, self.config.loss_regul)
-            lossfun_normals = nn.MSELoss()
             train_loss_hkr = 0.
             train_loss_recons = 0.
             train_loss_normals = 0.
@@ -149,7 +148,7 @@ class Trainer(M.Logger):
                 grad = autograd.grad(outputs=model(X_bd[0]), inputs=X_bd[0],
                         grad_outputs=torch.ones_like(Y_bd).to(self.config.device),
                         create_graph=True, retain_graph=True)[0]
-                batch_loss_normals = lossfun_normals(grad, N_bd[0])
+                batch_loss_normals = torch.sum( (grad - N_bd[0])**2)
                 train_loss_normals += batch_loss_normals.detach()
 
                 batch_loss = \
@@ -162,7 +161,7 @@ class Trainer(M.Logger):
                 for cb in self.callbacks:
                     cb.callOnEndForward(self, model)
 
-            self.metrics["train_loss"] = [train_loss_hkr, train_loss_recons, train_loss_normals]
+            self.metrics["train_loss"] = [float(x) for x in (train_loss_hkr, train_loss_recons, train_loss_normals)]
             self.metrics["epoch_time"] = time.time() - t0
             for cb in self.callbacks:
                 cb.callOnEndTrain(self, model)

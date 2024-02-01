@@ -113,9 +113,9 @@ if __name__ == "__main__":
         help="path to the input mesh")
     parser.add_argument("--unsigned", action="store_true")
     parser.add_argument("-no", "--n-train", type=int, default=10000)
-    parser.add_argument("-nb", "--n-boundary", type=int, default=5000)
+    parser.add_argument("-ni", "--n-boundary", type=int, default=5000)
     parser.add_argument("-nt", "--n-test",  type=int, default=3000)
-    parser.add_argument("-nts", "--n-test-boundary", type=int, default=1000)
+    parser.add_argument("-nti", "--n-test-boundary", type=int, default=1000)
     parser.add_argument("-visu", help="generates visualization point cloud", action="store_true")
     args = parser.parse_args()
 

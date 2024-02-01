@@ -48,7 +48,7 @@ def render_sdf(path, model, domain : M.geometry.BB2D, device, res=800, batch_siz
         batch.requires_grad = False
         v_batch = model(batch).cpu()
         dist_values.append(v_batch.detach().cpu().numpy())
-
+        
     img = np.concatenate(dist_values).reshape((res,resY)).T
     img = img[::-1,:]
 

@@ -1,17 +1,22 @@
 import torch
 from torch import nn
 from deel import torchlip
+from .sll_layer import SDPBasedLipschitzDense
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
 
 def save_model(model, layers, path):
-    data = { "layers" : layers, "state_dict" : model.state_dict()}
+    data = { "id": model.id, "layers" : layers, "state_dict" : model.state_dict()}
     torch.save(data, path)
     
 def load_model(path, device):
     data = torch.load(path, map_location=device)
-    model = DenseLipNetwork(data["layers"])
+    model_type = data.get("id","Spectral")
+    if model_type == "Spectral":
+        model = DenseLipNetwork(data["layers"])
+    elif model_type == "SDP":
+        model = DenseSDPLip(*data["layers"])
     model.load_state_dict(data["state_dict"])
     return model
     
@@ -32,8 +37,19 @@ def DenseLipNetwork(
             layers.append(activation())
     model = torchlip.Sequential(*layers, k_coef_lip=k_coeff_lip)
     model.archi = widths
+    model.id = "Spectral"
     return model
 
+def DenseSDPLip(n_in, n_hidden, n_layers):
+    layers = []
+    layers.append(nn.ZeroPad1d((0, n_hidden-n_in)))
+    for ilayer in range(n_layers):
+        layers.append(SDPBasedLipschitzDense(n_hidden))
+    layers.append(torchlip.FrobeniusLinear(n_hidden,1))
+    model = torch.nn.Sequential(*layers)
+    model.archi = [n_in, n_hidden, n_layers]
+    model.id = "SDP"
+    return model
 
 def MultiLayerPerceptron(widths, activ=nn.ReLU):
     layers = []
