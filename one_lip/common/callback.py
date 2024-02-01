@@ -77,11 +77,14 @@ class CheckpointCB(Callback):
 class ComputeSingularValuesCB(Callback):
 
     def callOnEndTrain(self, trainer, model):
-        singular_values = parameter_singular_values(model)
-        print("Singular values:")
-        for sv in singular_values:
-            print(sv)
-        print()
+        epoch = trainer.metrics["epoch"]
+        cpfreq = trainer.config.checkpoint_freq
+        if cpfreq>0 and epoch%cpfreq==0:
+            singular_values = parameter_singular_values(model)
+            print("Singular values:")
+            for sv in singular_values:
+                print(sv)
+            print()
 
 
 class RenderCB(Callback):

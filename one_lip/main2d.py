@@ -60,7 +60,7 @@ if __name__ == "__main__":
     #     archi, group_sort_size=0, niter_spectral=3, niter_bjorck=15
     # ).to(config.device)
 
-    model = DenseSDPLip(2, 64, 3).to(config.device)
+    model = DenseSDPLip(2, 256, 8).to(config.device)
 
     print("PARAMETERS:", count_parameters(model))
 
@@ -78,7 +78,7 @@ if __name__ == "__main__":
         RenderCB(plot_domain),
         RenderGradientCB(plot_domain),
         # ComputeSingularValuesCB(),
-        # UpdateHkrRegulCB({1 : 1., 3 : 10., 6: 100.}) 
+        UpdateHkrRegulCB({1 : 1., 10 : 10., 20: 100.}) 
     )
 
     trainer.train(model)

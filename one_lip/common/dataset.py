@@ -39,10 +39,13 @@ class PointCloudDataset(M.Logger):
         self.X_train_bd = torch.Tensor(self.X_train_bd).to(self.config.device)
         self._train_loader_bd = None
 
-        self.Normals_bd = np.load(self.paths["Normals_bd"])
-        self.Normals_bd = torch.Tensor(self.Normals_bd).to(self.config.device)
-        self._train_loader_normals = None
-
+        try:
+            self.Normals_bd = np.load(self.paths["Normals_bd"])
+            self.Normals_bd = torch.Tensor(self.Normals_bd).to(self.config.device)
+            self._train_loader_normals = None
+        except:
+            self.config.normal_weight = 0.
+    
         self.X_test = np.load(self.paths["Xtest"])
         self.Y_test = np.load(self.paths["Ytest"]).reshape((self.X_test.shape[0], 1))
         self.X_test = torch.Tensor(self.X_test).to(self.config.device)

@@ -17,11 +17,13 @@ if __name__ == "__main__":
 
     parser.add_argument("dataset", type=str)
     parser.add_argument("-o", "--output-name", type=str, default="")
-    parser.add_argument("-n", "--n-iter", type=int, default=10, help="Number of iterations")
-    parser.add_argument('-bs',"--batch-size", type=int, default=100, help="Batch size")
     parser.add_argument("-ne", "--epochs", type=int, default=10, help="Number of epochs per iteration")
-    parser.add_argument("-cpu", action="store_true")
+    parser.add_argument('-bs',"--batch-size", type=int, default=100, help="Batch size")
+    parser.add_argument("-tbs", "--test-batch-size", type = int, default = 5000, help="Batch size on test set")
+    parser.add_argument("-cp", "--checkpoint-freq", type=int, default=10)
     parser.add_argument("-a", "--attach-weight", type=float, default=0.)
+    parser.add_argument("-b", "--normal-weight", type=float, default=0.)
+    parser.add_argument("-cpu", action="store_true")
     args = parser.parse_args()
 
     #### Config ####
@@ -50,17 +52,19 @@ if __name__ == "__main__":
 
     #### Create model and setup trainer
     # archi = [(3,1024), (1024,1024), (1024,1024), (1024,1024), (1024,1024), (1024,1024), (1024,1024), (1024,1)]
-    archi = [(3,512), (512,512), (512,512), (512,512), (512,512), (512,512), (512,512), (512,512), (512,1)]
+    # archi = [(3,512), (512,512), (512,512), (512,512), (512,512), (512,512), (512,512), (512,512), (512,1)]
     # archi = [(3,512), (512,512), (512,512), (512,512), (512,1)]
     # archi = [(3,256), (256,256), (256,256), (256,256), (256,1)]
     # archi = [(3,128), (128,128), (128,128), (128,128), (128,1)]
     # archi = [(3,64), (64,64), (64,64), (64,64), (64,1)]
     # archi = [(3,32), (32,32), (32,32), (32,32), (32,1)]
 
-    model = DenseLipNetwork(
-        archi, group_sort_size=0,
-        niter_spectral=3, niter_bjorck=15
-    ).to(config.device)
+    # model = DenseLipNetwork(
+    #     archi, group_sort_size=0,
+    #     niter_spectral=3, niter_bjorck=15
+    # ).to(config.device)
+
+    model = DenseSDPLip(3, 512, 8).to(config.device)
 
     print("PARAMETERS:", count_parameters(model))
     pc = point_cloud_from_tensors(
@@ -74,6 +78,6 @@ if __name__ == "__main__":
         LoggerCB(os.path.join(config.output_folder, "log.txt")),
         CheckpointCB(),
         # ComputeSingularValuesCB(),
-        UpdateHkrRegulCB({1 : 1., 3 : 10., 6: 100.}) 
+        UpdateHkrRegulCB({1 : 1., 10 : 10., 20: 100.}) 
     )
     trainer.train(model)
