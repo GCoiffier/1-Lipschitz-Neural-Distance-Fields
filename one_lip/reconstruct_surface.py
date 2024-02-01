@@ -27,7 +27,7 @@ if __name__ == "__main__":
 
     if len(args.output_name)==0:
         args.output_name = args.model.split("/")[-1].split(".pt")[0]
-    if args.range: args.offset = np.linspace(-0.05,0.05,50)
+    if args.range: args.offset = np.linspace(-0.05,0.05,21)
 
     # sdf = load_model(args.model, device).vanilla_export().to(device)
     sdf = load_model(args.model, device).to(device)
@@ -61,8 +61,8 @@ if __name__ == "__main__":
             values_attr = m.vertices.create_attribute("values", float, 1, dense=True)
             values_attr._data = values
 
-            # M.mesh.save(m,f"{args.output_name}_{round(1000*off)}.obj")
-            M.mesh.save(m,f"output/{ioff:02d}_{args.output_name}_{round(1000*off)}.geogram_ascii")
+            # M.mesh.save(m,f"output/{ioff:02d}_{args.output_name}_{round(1000*off)}.geogram_ascii")
+            M.mesh.save(m,f"output/{ioff:02d}_{args.output_name}_{round(1000*off)}.obj")
         except ValueError:
             continue
         
