@@ -39,11 +39,13 @@ class PointCloudDataset(M.Logger):
         self.X_train_bd = torch.Tensor(self.X_train_bd).to(self.config.device)
         self._train_loader_bd = None
 
-        try:
+        found_normals = os.path.exists(self.paths["Normals_bd"])
+        if found_normals:
             self.Normals_bd = np.load(self.paths["Normals_bd"])
             self.Normals_bd = torch.Tensor(self.Normals_bd).to(self.config.device)
             self._train_loader_normals = None
-        except:
+        elif self.config.normal_weight>0. :
+            self.log("No normals found. Removing normal reconstruction loss")
             self.config.normal_weight = 0.
     
         self.X_test = np.load(self.paths["Xtest"])
@@ -57,7 +59,6 @@ class PointCloudDataset(M.Logger):
                 f"Inside: {self.X_train_in.shape}\n", 
                 f"Outside: {self.X_train_out.shape}\n",
                 f"Boundary: {self.X_train_bd.shape}\n",
-                f"Normals: {self.Normals_bd.shape}\n", 
                 f"Test: {self.X_test.shape}")
         if not self.config.attach_weight>0.:
             # merge X_in and X_bd
