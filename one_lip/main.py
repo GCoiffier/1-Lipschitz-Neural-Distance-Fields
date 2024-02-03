@@ -64,7 +64,7 @@ if __name__ == "__main__":
     #     niter_spectral=3, niter_bjorck=15
     # ).to(config.device)
 
-    model = DenseSDPLip(3, 512, 8).to(config.device)
+    model = DenseSDPLip(3, 512, 20).to(config.device)
 
     print("PARAMETERS:", count_parameters(model))
     pc = point_cloud_from_tensors(
