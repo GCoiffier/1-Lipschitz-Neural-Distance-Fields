@@ -7,6 +7,8 @@ from numpy.random import choice
 import argparse
 from numba import jit, prange
 
+from common.visualize import point_cloud_from_array
+
 @jit(cache=True, nopython=True)
 def cross(A,B):
     return A[0]*B[1] - A[1]*B[0]
@@ -39,7 +41,7 @@ def intersect_ray_segment2D(P, A, B):
     return (t>=0. and 0<=u<=1)
 
 @jit(cache=True, nopython=True, parallel=True)
-def signed_distance(P, PL):
+def distance_to_polyline(P, PL, signed):
     nE = PL.shape[0]
     n_collisions = 0
     d = 100.
@@ -48,21 +50,22 @@ def signed_distance(P, PL):
         if intersect_ray_segment2D(P, pA,pB): 
             n_collisions = n_collisions + 1
         d = min(d, distance_to_segment2D(P,pA,pB))
-    if n_collisions % 2 == 1:
+    if signed and n_collisions % 2 == 1:
         return -d
     return d
 
 @jit(cache=True, nopython=True, parallel=True)
-def compute_distances(Q, PL):
+def compute_distances(Q, PL, signed=True):
     """
     Args:
         Q : query points array
         PL : polyline
+        signed : bool
     """
     nQ = Q.shape[0]
     Y = np.zeros(nQ)
     for i in prange(nQ):
-        Y[i] = signed_distance(Q[i,:], PL)
+        Y[i] = distance_to_polyline(Q[i,:], PL, signed)
     return Y
 
 @jit(cache=True, nopython=True, parallel=True)
@@ -142,65 +145,79 @@ if __name__ == "__main__":
         b_edges[i,0,:] = pA
         b_edges[i,1,:] = pB
 
+    arrays_to_save = dict()
+
     print("Generate train set")
     print(" | Sampling points")
-    X_bd, N_bd = sample_points_and_normals(mesh, args.n_boundary)
-    mult = 20
-    ok = False
-    while not ok:
-        X_other = M.processing.sampling.sample_bounding_box_2D(domain, mult*args.n_train)[:,:2]
-        Y_other = compute_distances(X_other, b_edges)
-        X_in = X_other[Y_other<-1e-3, :][:args.n_train]
-        X_out = X_other[Y_other>1e-2, :][:args.n_train]
-        ok = (X_in.shape[0] == args.n_train and X_out.shape[0] == args.n_train)
-        mult *= 2
-    print(f" | Generated {X_in.shape[0]} (inside), {X_out.shape[0]} (outside), {X_bd.shape[0]} (boundary)")
+    if args.unsigned:
+        X_bd, _ = sample_points_and_normals(mesh, args.n_train)
+        N_bd = None
+        X_out = M.processing.sampling.sample_bounding_box_2D(domain, args.n_train)[:,:2]
+        print(f" | Generated {X_bd.shape[0]} (on), {X_out.shape[0]} (outside)")
+        arrays_to_save["Xtrain_on"] = X_bd
+        arrays_to_save["Xtrain_out"] = X_out
+    else:
+        X_bd, N_bd = sample_points_and_normals(mesh, args.n_boundary)
+        mult = 20
+        ok = False
+        while not ok:
+            X_other = M.processing.sampling.sample_bounding_box_2D(domain, mult*args.n_train)[:,:2]
+            Y_other = compute_distances(X_other, b_edges)
+            X_in = X_other[Y_other<-1e-3, :][:args.n_train]
+            X_out = X_other[Y_other>1e-2, :][:args.n_train]
+            ok = (X_in.shape[0] == args.n_train and X_out.shape[0] == args.n_train)
+            mult *= 2
+        print(f" | Generated {X_in.shape[0]} (inside), {X_out.shape[0]} (outside), {X_bd.shape[0]} (boundary)")
+        arrays_to_save["Xtrain_bd"] = X_bd
+        arrays_to_save["Normals_bd"] = N_bd
+        arrays_to_save["Xtrain_in"] = X_in
+        arrays_to_save["Xtrain_out"] = X_out
 
     print("Generate test set")
     args.n_test_boundary = min(args.n_test_boundary, args.n_boundary)
     X_test = M.processing.sampling.sample_bounding_box_2D(domain, args.n_test)
-    Y_test = compute_distances(X_test, b_edges)
+    Y_test = compute_distances(X_test, b_edges, not args.unsigned)
     X_test = np.concatenate((X_test, X_bd[np.random.choice(X_bd.shape[0], args.n_test_boundary, replace=False), :]))
     Y_test = np.concatenate((Y_test,np.zeros(args.n_test_boundary)))
-    
-    if args.visu:
-        print("Generate visualization output")
-        pc_train = M.mesh.PointCloud()
-        in_out_attr = pc_train.vertices.create_attribute("in", int)
-        for i in range(X_in.shape[0]):
-            pc_train.vertices.append(geom.Vec(X_in[i,0], X_in[i,1], 0.))
-            in_out_attr[i] = -1
-        n = len(pc_train.vertices)
-        for i in range(X_bd.shape[0]):
-            pc_train.vertices.append(geom.Vec(X_bd[i,0], X_bd[i,1], 0.))
-            in_out_attr[n+i] = 0
-        n = len(pc_train.vertices)
-        for i in range(X_out.shape[0]):
-            pc_train.vertices.append(geom.Vec(X_out[i,0], X_out[i,1], 0.))
-            in_out_attr[n+i] = 1
+    arrays_to_save["Xtest"] = X_test
+    arrays_to_save["Ytest"] = Y_test
 
-        pc_test  = M.mesh.PointCloud()
+    if args.visu:
+        mesh_to_save = dict()
+        print("Generate visualization output")
+
+        mesh_to_save["pts_bd"] = point_cloud_from_array(X_bd)
+
+        if args.unsigned:
+            mesh_to_save["pts_out"] = point_cloud_from_array(X_out)
+        else:
+            pc_train = point_cloud_from_array(np.concatenate([X_in,X_out]))
+            in_out_attr = pc_train.vertices.create_attribute("in", bool)
+            for i in range(X_in.shape[0]):
+                in_out_attr[i] = True
+            mesh_to_save["pts_train"] = pc_train
+
+        if N_bd is not None:
+            # Build normal field as polyline
+            nrml_poly = M.mesh.PolyLine()
+            for i in range(X_bd.shape[0]):
+                p1 = geom.Vec(X_bd[i,0], X_bd[i,1], 0.)
+                p2 = p1 + 0.1*M.Vec(N_bd[i,0], N_bd[i,1], 0.)
+                nrml_poly.vertices += [p1, p2]
+                nrml_poly.edges.append((2*i, 2*i+1))
+            mesh_to_save["normals"] = nrml_poly
+
+        pc_test  = point_cloud_from_array(X_test)
         dist_attr = pc_test.vertices.create_attribute("d", float)
         for i in range(X_test.shape[0]):
-            pc_test.vertices.append(geom.Vec(X_test[i,0], X_test[i,1], 0.))
             dist_attr[i] = Y_test[i]
+        
 
-        nrml_poly = M.mesh.PolyLine()
-        for i in range(X_bd.shape[0]):
-            p1 = geom.Vec(X_bd[i,0], X_bd[i,1], 0.)
-            p2 = p1 + 0.1*M.Vec(N_bd[i,0], N_bd[i,1], 0.)
-            nrml_poly.vertices += [p1, p2]
-            nrml_poly.edges.append((2*i, 2*i+1))
 
     print("Saving files")
     name = M.utils.get_filename(args.input_mesh)
     if args.visu:
-        M.mesh.save(pc_train, f"inputs/{name}_pts_train.geogram_ascii")
-        M.mesh.save(pc_test, f"inputs/{name}_pts_test.geogram_ascii")
-        M.mesh.save(nrml_poly,f"inputs/{name}_normals.mesh")
-    np.save(f"inputs/{name}_Xtrain_in.npy", X_in)
-    np.save(f"inputs/{name}_Xtrain_out.npy", X_out)
-    np.save(f"inputs/{name}_Xtrain_bd.npy", X_bd)
-    np.save(f"inputs/{name}_Normals_bd.npy", N_bd)
-    np.save(f"inputs/{name}_Xtest.npy", X_test)
-    np.save(f"inputs/{name}_Ytest.npy", Y_test)
+        for mesh_name, mesh in mesh_to_save.items():
+            M.mesh.save(mesh, f"inputs/{name}_{mesh_name}.geogram_ascii")
+    for ar_name,ar in arrays_to_save.items():
+        np.save(f"inputs/{name}_{ar_name}.npy", ar)

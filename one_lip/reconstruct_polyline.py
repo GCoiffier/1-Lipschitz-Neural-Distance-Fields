@@ -19,8 +19,8 @@ if __name__ == "__main__":
     parser.add_argument("-res", "--resolution", type=int, default=800, help="resolution")
     parser.add_argument("-cpu", action="store_true")
     parser.add_argument("-bs", "--batch-size", type=int, default=5000)
-    parser.add_argument("-r", "--range", action="store_true", help="output isolines for linspace(-0.1, 0.1, 21)")
-    parser.add_argument("-merge", action="store_true")
+    parser.add_argument("-r", "--range", action="store_true", help="output isolines for linspace(-0.1, 0.1, 31)")
+    parser.add_argument("--merge", action="store_true")
     args = parser.parse_args()
 
     device = get_device(args.cpu)
@@ -28,7 +28,7 @@ if __name__ == "__main__":
 
     if len(args.output_name)==0:
         args.output_name = args.model.split("/")[-1].split(".pt")[0]
-    if args.range: args.offset = np.linspace(-0.1,0.1,21)
+    if args.range: args.offset = np.linspace(-0.1,0.1,31)
 
     # sdf = load_model(args.model, device).vanilla_export().to(device)
     sdf = load_model(args.model, device).to(device)
