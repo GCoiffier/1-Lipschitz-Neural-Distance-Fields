@@ -4,7 +4,7 @@ import argparse
 import mouette as M
 
 from common.config import Config
-from common.dataset import PointCloudDataset
+from common.dataset import PointCloudDataset, PointCloudDataset_NoInterior
 from common.model import *
 from common.visualize import point_cloud_from_tensors
 from common.training import Trainer
@@ -16,18 +16,20 @@ if __name__ == "__main__":
 
     parser.add_argument("dataset", type=str)
     parser.add_argument("-o", "--output-name", type=str, default="")
+    parser.add_argument("--unsigned", type=str, default="")
     parser.add_argument("-ne", "--epochs", type=int, default=200, help="Number of epochs")
     parser.add_argument("-cp", "--checkpoint-freq", type=int, default=10)
     parser.add_argument('-bs',"--batch-size", type=int, default=200, help="Batch size")
     parser.add_argument("-tbs", "--test-batch-size", type = int, default = 5000, help="Batch size on test set")
-    parser.add_argument("-a", "--attach-weight", type=float, default=0.)
-    parser.add_argument("-b", "--normal-weight", type=float, default=0.)
+    parser.add_argument("-a", "--attach-weight", type=float, default=0., help="has no effect if --unsigned")
+    parser.add_argument("-b", "--normal-weight", type=float, default=0., help="has no effect if --unsigned")
     parser.add_argument("-cpu", action="store_true")
     args = parser.parse_args()
 
     #### Config ####
     config = Config(
         dim = 2,
+        signed = not args.unsigned,
         device = get_device(args.cpu),
         n_epochs = args.epochs,
         checkpoint_freq = args.checkpoint_freq,
@@ -45,7 +47,12 @@ if __name__ == "__main__":
     print("DEVICE:", config.device)
 
     #### Load dataset ####
-    dataset = PointCloudDataset(args.dataset, config)
+    if config.signed:
+        dataset = PointCloudDataset(args.dataset, config)
+    else:
+        config.attach_weight = 0.
+        config.normal_weight = 0.
+        dataset = PointCloudDataset_NoInterior(args.dataset, config)
     plot_domain = dataset.object_BB
     plot_domain.pad(0.5, 0.5)
 
@@ -64,14 +71,19 @@ if __name__ == "__main__":
 
     print("PARAMETERS:", count_parameters(model))
 
-    pc = point_cloud_from_tensors(
-        dataset.X_train_in.detach().cpu(),
-        dataset.X_train_out.detach().cpu(),
-        dataset.X_train_bd.detach().cpu())
+    if config.signed:
+        pc = point_cloud_from_tensors(
+            dataset.X_train_in.detach().cpu(),
+            dataset.X_train_out.detach().cpu(),
+            dataset.X_train_bd.detach().cpu())
+    else:
+        pc = point_cloud_from_tensors(
+            dataset.X_train_on.detach().cpu(), 
+            dataset.X_train_out.detach().cpu())
     M.mesh.save(pc, os.path.join(config.output_folder, f"pc_0.geogram_ascii"))
 
-    trainer = Trainer(dataset, config)
 
+    trainer = Trainer(dataset, config)
     trainer.add_callbacks(
         LoggerCB(os.path.join(config.output_folder, "log.txt")),
         CheckpointCB(),

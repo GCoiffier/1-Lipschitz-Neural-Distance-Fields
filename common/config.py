@@ -3,6 +3,7 @@ from dataclasses import dataclass
 @dataclass
 class Config:
     dim : int = -1
+    signed : bool = True
     device : str = ""
     
     batch_size : int = 100

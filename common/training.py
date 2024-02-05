@@ -33,14 +33,17 @@ class Trainer(M.Logger):
             assert(isinstance(cb, Callback))
             self.callbacks.append(cb)
 
-    def train(self, model):
+    def train(self, model, full_info=False):
         if self.optimizer is None :
-            self.optimizer = self.get_optimizer(model)
+            self.optimizer = self.get_optimizer(model)        
+
+        if full_info:
+            return self._train_with_full_info(model)
         
         if self.config.normal_weight>0.:
             return self._train_with_normals(model)
         elif self.config.attach_weight>0.:
-           return self._train_with_attach(model)
+            return self._train_with_attach(model)
         else:
             return self._train_hkr(model)
 
@@ -53,7 +56,7 @@ class Trainer(M.Logger):
         for inputs,labels in self.dataset.test_loader:
             outputs = model(inputs)
             loss = testlossfun(outputs, labels)
-            test_loss += self.config.test_batch_size * loss.item()
+            test_loss += loss.item()
         self.metrics["test_loss"] = test_loss
         for cb in self.callbacks:
             cb.callOnEndTest(self, model)
@@ -167,3 +170,27 @@ class Trainer(M.Logger):
                 cb.callOnEndTrain(self, model)
             self.evaluate_model(model)
             
+    
+    def _train_with_full_info(self, model): 
+        for epoch in range(self.config.n_epochs):  # loop over the dataset multiple times
+            self.metrics["epoch"] = epoch+1
+            for cb in self.callbacks:
+                cb.callOnBeginTrain(self, model)
+            t0 = time.time()
+            train_loss = 0.
+            lossfun = nn.MSELoss()
+            for (x,y_target) in tqdm(self.dataset.train_loader, total=len(self.dataset)):
+                self.optimizer.zero_grad() # zero the parameter gradients
+                # forward + backward + optimize
+                y_pred = model(x) # forward computation
+                loss = lossfun(y_pred, y_target)
+                train_loss += loss.item()
+                loss.backward() # call back propagation
+                self.optimizer.step()
+                for cb in self.callbacks:
+                    cb.callOnEndForward(self, model)
+            self.metrics["train_loss"] = train_loss
+            self.metrics["epoch_time"] = time.time() - t0
+            for cb in self.callbacks:
+                cb.callOnEndTrain(self, model)
+            self.evaluate_model(model)

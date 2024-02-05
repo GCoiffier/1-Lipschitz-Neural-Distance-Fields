@@ -17,6 +17,8 @@ def load_model(path, device):
         model = DenseLipNetwork(data["layers"])
     elif model_type == "SDP":
         model = DenseSDPLip(*data["layers"])
+    elif model_type == "MLP":
+        model = MultiLayerPerceptron(data["layers"])
     model.load_state_dict(data["state_dict"])
     return model
     
@@ -52,11 +54,18 @@ def DenseSDPLip(n_in, n_hidden, n_layers):
     return model
 
 def MultiLayerPerceptron(widths, activ=nn.ReLU):
+    """
+    On the Effectiveness of Weight-Encoded Neural Implicit 3D Shapes
+    """
     layers = []
     for w_in,w_out in widths:
         layers.append(nn.Linear(w_in,w_out))
-        layers.append(activ())
+        if w_out==1:
+            layers.append(nn.Tanh())
+        else:
+            layers.append(activ())
     model = nn.Sequential(*layers)
     model.archi = widths
+    model.id = "MLP"
     return model
     

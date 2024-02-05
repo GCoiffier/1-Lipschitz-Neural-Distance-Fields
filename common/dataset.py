@@ -223,3 +223,63 @@ class PointCloudDataset_NoInterior(M.Logger):
     
     def __len__(self):
         return self.train_size
+    
+
+class PointCloudDataset_FullInfo(M.Logger):
+
+    def __init__(self, name, config):
+        super().__init__("Dataset", verbose=True)
+        self.paths = {
+            "Xtrain" : os.path.join("inputs", f"{name}_Xtrain.npy"),
+            "Ytrain" : os.path.join("inputs", f"{name}_Ytrain.npy"),
+            "Xtest" : os.path.join("inputs", f"{name}_Xtest.npy"),
+            "Ytest" : os.path.join("inputs", f"{name}_Ytest.npy")
+        }
+        self.config = config
+
+        self._object_bb = None
+        self._domain = None
+
+        # Load data
+        self.log("Loading dataset...")
+        self.X_train = np.load(self.paths["Xtrain"])
+        self.X_train = torch.Tensor(self.X_train).to(self.config.device)
+        self.Y_train = np.load(self.paths["Ytrain"]).reshape((self.X_train.shape[0], 1))
+        self.Y_train = torch.Tensor(self.Y_train).to(self.config.device)
+        train_data = TensorDataset(self.X_train, self.Y_train)
+        self._train_loader = DataLoader(train_data, batch_size=self.config.batch_size, shuffle=True)
+
+        self.X_test = np.load(self.paths["Xtest"])
+        self.Y_test = np.load(self.paths["Ytest"]).reshape((self.X_test.shape[0], 1))
+        self.X_test = torch.Tensor(self.X_test).to(self.config.device)
+        self.Y_test = torch.Tensor(self.Y_test).to(self.config.device)
+        test_data = TensorDataset(self.X_test, self.Y_test)
+        self.test_loader = DataLoader(test_data, batch_size=self.config.test_batch_size)
+
+        self.log(f"Succesfully loaded:\n", 
+                f"Train: {self.X_train.shape}\n",  
+                f"Test: {self.X_test.shape}")
+
+    @property
+    def object_BB(self):
+        if self._object_bb is None :
+            X_in = self.X_train[np.squeeze(self.Y_train)<=0, :]
+            self._object_bb = get_BB(X_in, self.config.dim)
+        return self._object_bb
+
+    @property
+    def domain(self):
+        if self._domain is None :
+            self._domain = get_BB(self.X_train, self.config.dim)
+        return self._domain
+
+    @property
+    def train_loader(self):
+        return self._train_loader
+
+    @property
+    def train_size(self):
+        return self.X_train.shape[0] // self.config.batch_size
+    
+    def __len__(self):
+        return self.train_size
