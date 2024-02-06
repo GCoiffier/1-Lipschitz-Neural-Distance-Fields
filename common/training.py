@@ -151,7 +151,7 @@ class Trainer(M.Logger):
                 grad = autograd.grad(outputs=model(X_bd[0]), inputs=X_bd[0],
                         grad_outputs=torch.ones_like(Y_bd).to(self.config.device),
                         create_graph=True, retain_graph=True)[0]
-                batch_loss_normals = torch.sum( (grad - N_bd[0])**2)
+                batch_loss_normals = vector_alignment_loss(grad, N_bd[0])
                 train_loss_normals += batch_loss_normals.detach()
 
                 batch_loss = \
