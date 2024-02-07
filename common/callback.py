@@ -99,8 +99,10 @@ class RenderCB(Callback):
         cpfreq = trainer.config.checkpoint_freq
         if cpfreq>0 and epoch%cpfreq==0:
             render_path = os.path.join(trainer.config.output_folder, f"render_{epoch}.png")
+            contour_path = os.path.join(trainer.config.output_folder, f"contour_{epoch}.png")
             render_sdf(
-                render_path, 
+                render_path,
+                contour_path,
                 model, 
                 self.domain, 
                 trainer.config.device, 
