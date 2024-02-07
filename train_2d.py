@@ -35,7 +35,7 @@ if __name__ == "__main__":
         checkpoint_freq = args.checkpoint_freq,
         batch_size = args.batch_size,
         test_batch_size = args.test_batch_size,
-        loss_margin = 1e-2,
+        loss_margin = 1e-3,
         loss_regul = 100.,
         attach_weight = args.attach_weight,
         normal_weight = args.normal_weight,
@@ -60,14 +60,14 @@ if __name__ == "__main__":
     
     # archi = [(2,256), (256,256), (256,256), (256,256), (256,1)]
     # archi = [(2,128), (128,128), (128,128), (128,128),(128,1)]
-    # archi = [(2,64), (64,64), (64,64), (64,64), (64,1)]
-    archi = [(2,32), (32,32), (32,32), (32,32), (32,32), (32,32), (32,1)]
+    # archi = [(2,64), (64,64), (64,64), (64,64), (64,64), (64,64), (64,64), (64,1)]
+    archi = [(2,32), (32,32), (32,32), (32,32), (32,32), (32,32),(32,32), (32,32), (32,1)]
     
     model = DenseLipNetwork(
         archi, group_sort_size=0, niter_spectral=3, niter_bjorck=15
     ).to(config.device)
 
-    # model = DenseSDPLip(2, 256, 8).to(config.device)
+    # model = DenseSDPLip(2, 64, 8).to(config.device)
 
     print("PARAMETERS:", count_parameters(model))
 
@@ -86,11 +86,11 @@ if __name__ == "__main__":
     trainer = Trainer(dataset, config)
     trainer.add_callbacks(
         LoggerCB(os.path.join(config.output_folder, "log.txt")),
-        CheckpointCB(),
-        RenderCB(plot_domain),
-        RenderGradientCB(plot_domain),
+        CheckpointCB(args.checkpoint_freq),
+        RenderCB(args.checkpoint_freq, plot_domain),
+        RenderGradientCB(args.checkpoint_freq, plot_domain),
         # ComputeSingularValuesCB(),
-        # UpdateHkrRegulCB({1 : 1., 5 : 10., 10: 100.}) 
+        UpdateHkrRegulCB({1 : 1., 5 : 10., 10: 100.}) 
     )
 
     trainer.train(model)

@@ -65,10 +65,13 @@ class CheckpointCB(Callback):
     A Specific Callback responsible for saving the model currently in training into a file
     """
 
+    def __init__(self, frequency):
+        super().__init__()
+        self.freq = frequency
+
     def callOnEndTrain(self, trainer, model):
         epoch = trainer.metrics["epoch"]
-        cpfreq = trainer.config.checkpoint_freq
-        if cpfreq != 0 and epoch%cpfreq == 0:
+        if self.freq != 0 and epoch%self.freq == 0:
             name = f"model_e{epoch}.pt"
             path = os.path.join(trainer.config.output_folder, name)
             save_model(model, model.archi, path)
@@ -76,10 +79,13 @@ class CheckpointCB(Callback):
 
 class ComputeSingularValuesCB(Callback):
 
+    def __init__(self, frequency):
+        super().__init__()
+        self.freq = frequency
+
     def callOnEndTrain(self, trainer, model):
         epoch = trainer.metrics["epoch"]
-        cpfreq = trainer.config.checkpoint_freq
-        if cpfreq>0 and epoch%cpfreq==0:
+        if self.freq>0 and epoch%self.freq==0:
             singular_values = parameter_singular_values(model)
             print("Singular values:")
             for sv in singular_values:
@@ -89,15 +95,15 @@ class ComputeSingularValuesCB(Callback):
 
 class RenderCB(Callback):
 
-    def __init__(self, plot_domain, res=800):
+    def __init__(self, frequency, plot_domain, res=800):
         super().__init__()
         self.domain = plot_domain
+        self.freq = frequency
         self.res = res
 
     def callOnEndTrain(self, trainer, model):
         epoch = trainer.metrics["epoch"]
-        cpfreq = trainer.config.checkpoint_freq
-        if cpfreq>0 and epoch%cpfreq==0:
+        if self.freq>0 and epoch%self.freq==0:
             render_path = os.path.join(trainer.config.output_folder, f"render_{epoch}.png")
             render_sdf(
                 render_path, 
@@ -110,15 +116,15 @@ class RenderCB(Callback):
 
 class RenderGradientCB(Callback):
     
-    def __init__(self, plot_domain, res=800):
+    def __init__(self, frequency, plot_domain, res=800):
         super().__init__()
         self.domain = plot_domain
+        self.freq = frequency
         self.res = res
 
     def callOnEndTrain(self, trainer, model):
         epoch = trainer.metrics["epoch"]
-        cpfreq = trainer.config.checkpoint_freq
-        if cpfreq>0 and epoch%cpfreq==0:
+        if self.freq>0 and epoch%self.freq==0:
             grad_path = os.path.join(trainer.config.output_folder, f"grad_{epoch}.png")
             render_gradient_norm(
                 grad_path, 
