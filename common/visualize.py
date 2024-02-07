@@ -32,7 +32,7 @@ def point_cloud_from_tensors(Xin, Xout, Xbd=None) -> M.mesh.PointCloud:
             attr[n+1] = 0
     return pc
 
-def render_sdf(path, model, domain : M.geometry.BB2D, device, res=800, batch_size=1000):
+def render_sdf(render_path, contour_path, model, domain : M.geometry.BB2D, device, res=800, batch_size=1000):
     X = np.linspace(domain.left, domain.right, res)
     resY = round(res * domain.height/domain.width)
     Y = np.linspace(domain.bottom, domain.top, resY)
@@ -62,7 +62,16 @@ def render_sdf(path, model, domain : M.geometry.BB2D, device, res=800, batch_siz
     pos = plt.imshow(img, cmap="seismic", norm=norm)
     plt.axis('off')
     plt.colorbar(pos)
-    plt.savefig(path, bbox_inches='tight', pad_inches=0)
+    plt.savefig(render_path, bbox_inches='tight', pad_inches=0)
+
+    plt.clf()
+    rng = min(abs(np.min(img)), np.max(img))
+    cs = plt.contourf(X,Y,img, levels=np.linspace(-rng, rng, 31), cmap="seismic", extend="both")
+    cs.cmap.set_over('red')
+    cs.cmap.set_under('blue')
+    cs.changed()
+    plt.savefig(contour_path, bbox_inches='tight', pad_inches=0)
+
 
 def render_gradient_norm(path, model, domain : M.geometry.BB2D, device, res=800, batch_size=1000):
     X = np.linspace(domain.left, domain.right, res)

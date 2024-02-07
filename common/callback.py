@@ -105,8 +105,10 @@ class RenderCB(Callback):
         epoch = trainer.metrics["epoch"]
         if self.freq>0 and epoch%self.freq==0:
             render_path = os.path.join(trainer.config.output_folder, f"render_{epoch}.png")
+            contour_path = os.path.join(trainer.config.output_folder, f"contour_{epoch}.png")
             render_sdf(
-                render_path, 
+                render_path,
+                contour_path,
                 model, 
                 self.domain, 
                 trainer.config.device, 
