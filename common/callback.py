@@ -66,6 +66,10 @@ class CheckpointCB(Callback):
     def __init__(self, when : dict):
         self.when = when
 
+    def __init__(self, frequency):
+        super().__init__()
+        self.freq = frequency
+
     def callOnEndTrain(self, trainer, model):
         epoch = trainer.metrics["epoch"]
         if epoch in self.when:
@@ -96,6 +100,7 @@ class Render2DCB(Callback):
         self.save_folder = save_folder
         self.freq = freq
         self.domain = plot_domain
+        self.freq = freq
         self.res = res
         self.output_contours = output_contours
         self.output_gradient_norm = output_gradient_norm
