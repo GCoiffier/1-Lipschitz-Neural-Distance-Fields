@@ -1,6 +1,5 @@
-from common.model import load_model
+from common.models import load_model
 from common.utils import get_device
-from common.visualize import render_sdf
 
 from skimage.measure import find_contours
 import numpy as np
@@ -30,7 +29,6 @@ if __name__ == "__main__":
         args.output_name = args.model.split("/")[-1].split(".pt")[0]
     if args.range: args.offset = np.linspace(-0.1,0.1,31)
 
-    # sdf = load_model(args.model, device).vanilla_export().to(device)
     sdf = load_model(args.model, device).to(device)
 
     domain = M.geometry.BB2D(-1, -1, 1, 1)

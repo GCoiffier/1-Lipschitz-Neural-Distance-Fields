@@ -1,4 +1,4 @@
-from common.model import load_model
+from common.models import load_model
 from common.utils import get_device
 
 from skimage.measure import marching_cubes

@@ -2,7 +2,7 @@ import numpy as np
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
+from deel import torchlip
 
 def safe_inv(x):
     mask = x == 0
@@ -12,7 +12,7 @@ def safe_inv(x):
 
 class SDPBasedLipschitzDense(nn.Module):
 
-    def __init__(self, in_features, inner_dim=-1, **kwargs):
+    def __init__(self, in_features, inner_dim=-1):
         super().__init__()
 
         inner_dim = inner_dim if inner_dim != -1 else in_features
@@ -42,3 +42,14 @@ class SDPBasedLipschitzDense(nn.Module):
         res = 2 * F.linear(res, self.weight.T)
         out = x - res
         return out
+    
+def DenseSDP(dim_in, dim_hidden, n_layers):
+    layers = []
+    layers.append(nn.ZeroPad1d((0, dim_hidden-dim_in)))
+    for _ in range(n_layers):
+        layers.append(SDPBasedLipschitzDense(dim_hidden))
+    layers.append(torchlip.FrobeniusLinear(dim_hidden,1))
+    model = torch.nn.Sequential(*layers)
+    model.id = "SDP"
+    model.meta = [dim_in, dim_hidden, n_layers]
+    return model

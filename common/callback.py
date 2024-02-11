@@ -1,5 +1,5 @@
-from .model import save_model
-from .visualize import render_sdf, render_gradient_norm, parameter_singular_values
+from .models import save_model
+from .visualize import render_sdf_2d, parameter_singular_values
 import os
 
 class Callback:
@@ -59,27 +59,29 @@ class LoggerCB(Callback):
             s+= "\n"
             f.write(s)
 
-
 class CheckpointCB(Callback):
     """
     A Specific Callback responsible for saving the model currently in training into a file
     """
+    def __init__(self, when : dict):
+        self.when = when
 
     def callOnEndTrain(self, trainer, model):
         epoch = trainer.metrics["epoch"]
-        cpfreq = trainer.config.checkpoint_freq
-        if cpfreq != 0 and epoch%cpfreq == 0:
+        if epoch in self.when:
             name = f"model_e{epoch}.pt"
             path = os.path.join(trainer.config.output_folder, name)
-            save_model(model, model.archi, path)
+            save_model(model, path)
 
 
 class ComputeSingularValuesCB(Callback):
 
+    def __init__(self, freq):
+        self.freq = freq
+
     def callOnEndTrain(self, trainer, model):
         epoch = trainer.metrics["epoch"]
-        cpfreq = trainer.config.checkpoint_freq
-        if cpfreq>0 and epoch%cpfreq==0:
+        if self.freq>0 and epoch%self.freq==0:
             singular_values = parameter_singular_values(model)
             print("Singular values:")
             for sv in singular_values:
@@ -87,50 +89,33 @@ class ComputeSingularValuesCB(Callback):
             print()
 
 
-class RenderCB(Callback):
+class Render2DCB(Callback):
 
-    def __init__(self, plot_domain, res=800):
+    def __init__(self, save_folder, freq, plot_domain, res=800, output_contours=True, output_gradient_norm=True):
         super().__init__()
+        self.save_folder = save_folder
+        self.freq = freq
         self.domain = plot_domain
         self.res = res
+        self.output_contours = output_contours
+        self.output_gradient_norm = output_gradient_norm
 
     def callOnEndTrain(self, trainer, model):
         epoch = trainer.metrics["epoch"]
-        cpfreq = trainer.config.checkpoint_freq
-        if cpfreq>0 and epoch%cpfreq==0:
-            render_path = os.path.join(trainer.config.output_folder, f"render_{epoch}.png")
-            contour_path = os.path.join(trainer.config.output_folder, f"contour_{epoch}.png")
-            render_sdf(
+        if self.freq>0 and epoch%self.freq==0:
+            render_path = os.path.join(self.save_folder, f"render_{epoch}.png")
+            contour_path = os.path.join(self.save_folder, f"contour_{epoch}.png") if self.output_contours else None
+            gradient_path = os.path.join(self.save_folder, f"grad_{epoch}.png") if self.output_gradient_norm else None
+            render_sdf_2d(
                 render_path,
                 contour_path,
+                gradient_path,
                 model, 
                 self.domain, 
                 trainer.config.device, 
                 res=self.res, 
                 batch_size=trainer.config.test_batch_size
             )
-
-class RenderGradientCB(Callback):
-    
-    def __init__(self, plot_domain, res=800):
-        super().__init__()
-        self.domain = plot_domain
-        self.res = res
-
-    def callOnEndTrain(self, trainer, model):
-        epoch = trainer.metrics["epoch"]
-        cpfreq = trainer.config.checkpoint_freq
-        if cpfreq>0 and epoch%cpfreq==0:
-            grad_path = os.path.join(trainer.config.output_folder, f"grad_{epoch}.png")
-            render_gradient_norm(
-                grad_path, 
-                model, 
-                self.domain, 
-                trainer.config.device, 
-                res=self.res, 
-                batch_size=trainer.config.test_batch_size
-            )
-
 
 class UpdateHkrRegulCB(Callback):
 

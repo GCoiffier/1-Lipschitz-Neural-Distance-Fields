@@ -114,52 +114,6 @@ class PointCloudDataset(M.Logger):
     def __len__(self):
         return self.train_size
 
-    def clip_to_domain(self, X):
-        if self.config.dim==2:
-            X[:,0] = torch.clip(X[:,0], self.domain.left, self.domain.right)
-            X[:,1] = torch.clip(X[:,1], self.domain.bottom, self.domain.top)
-        elif self.config.dim==3:
-            for i in range(3):
-                X[:,i] = torch.clip(X[:,i], self.domain.min_coords[i], self.domain.max_coords[i])
-        return X
-    
-    def update_complementary_distribution(self, model, maxiter, level_set=-1e-3):
-        """
-        Perform Newton-Raphson iteration on the points to make them closer
-
-        Args:
-            sdf: pytorch model
-        """
-        step_size = 1. / maxiter
-        Xt = self.X_train_out.clone()
-        learning_rate = torch.rand((Xt.shape[0],1)).to(self.config.device)
-
-        for _ in range(maxiter):
-
-            Xt = Xt.detach()
-            Xt.requires_grad = True
-
-            # Compute signed distances
-            y = model(Xt)
-            ysum = torch.mean(y)
-            ysum.backward()
-            
-            # retrieve gradient of the function
-            grad = Xt.grad
-            grad_norm_squared = torch.sum(grad**2, axis=1).reshape((Xt.shape[0],1))
-            
-            grad = grad / (grad_norm_squared + 1e-8)
-            target = y + level_set
-            # target = F.relu(target)
-            Xt = Xt - step_size * learning_rate * target * grad
-            
-            # clipping to domain
-            Xt = self.clip_to_domain(Xt)
-        self.X_train_out = Xt.detach()
-
-        #print(self.X_train_out - old_Xt)
-        self._train_loader_out = None # reset loader
-
 
 class PointCloudDataset_NoInterior(M.Logger):
 

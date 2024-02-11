@@ -3,10 +3,8 @@ import argparse
 
 import mouette as M
 
-from common.dataset import PointCloudDataset
-from common.model import *
+from common.models import *
 from common.visualize import *
-from common.training import Trainer
 from common.utils import get_device
 
 if __name__ == "__main__":
