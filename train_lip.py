@@ -22,7 +22,7 @@ if __name__ == "__main__":
     # dataset parameters
     parser.add_argument("dataset", type=str)
     parser.add_argument("-o", "--output-name", type=str, default="")
-    parser.add_argument("--unsigned", type=str, default="")
+    parser.add_argument("--unsigned", action="store_true")
 
     # model parameters
     parser.add_argument("-model","--model", choices=["ortho", "sll"], default="ortho")

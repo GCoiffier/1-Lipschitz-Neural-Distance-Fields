@@ -74,14 +74,14 @@ if __name__ == "__main__":
 
         case "unsigned":
             X_on, X_out = extract_train_point_cloud_unsigned(args.n_train, mesh, domain)
-            arrays_to_save = {"X_on" : X_on, "X_out" : X_out}
+            arrays_to_save = {"Xtrain_on" : X_on, "Xtrain_out" : X_out}
             if args.visu:
                 mesh_to_save["pts_on"] = point_cloud_from_array(X_on)
                 mesh_to_save["pts_train"] = point_cloud_from_arrays((X_on,-1), (X_out, 1.))
 
         case "signed":
             X_on, N, X_in, X_out = extract_train_point_cloud(args.n_boundary, args.n_train, mesh, domain)
-            arrays_to_save = { "X_on" : X_on, "X_in" : X_in, "X_out" : X_out, "Nrml" : N}
+            arrays_to_save = { "Xtrain_on" : X_on, "Xtrain_in" : X_in, "Xtrain_out" : X_out, "Nrml" : N}
             if args.visu:
                 mesh_to_save["pts_train"] = point_cloud_from_arrays((X_in,-1),(X_out,1),(X_on,0))
                 mesh_to_save["pts_on"] = point_cloud_from_array(X_on)
@@ -125,5 +125,5 @@ if __name__ == "__main__":
             M.mesh.save(mesh, f"inputs/{name}_{file}.geogram_ascii")
 
     print("Saving files")
-    for file,ar in arrays_to_save:
+    for file,ar in arrays_to_save.items():
         np.save(f"inputs/{name}_{file}.npy", ar)
