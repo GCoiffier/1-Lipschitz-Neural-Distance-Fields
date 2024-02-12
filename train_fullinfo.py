@@ -30,7 +30,9 @@ if __name__ == "__main__":
     parser.add_argument("-ne", "--epochs", type=int, default=200, help="Number of epochs")
     parser.add_argument('-bs',"--batch-size", type=int, default=200, help="Batch size")
     parser.add_argument("-tbs", "--test-batch-size", type = int, default = 5000, help="Batch size on test set")
-    
+    parser.add_argument("-weik", "--eikonal-weight", type = float, default=0., help="weight for eikonal loss")
+    parser.add_argument("-wtv", "--total-variation-weight", type = float, default=0., help="weight for total variation loss")
+
     # misc
     parser.add_argument("-cp", "--checkpoint-freq", type=int, default=10)
     parser.add_argument("-cpu", action="store_true")
@@ -43,6 +45,8 @@ if __name__ == "__main__":
         checkpoint_freq = args.checkpoint_freq,
         batch_size = args.batch_size,
         test_batch_size = args.test_batch_size,
+        eikonal_weight = args.eikonal_weight,
+        tv_weight = args.total_variation_weight,
         optimizer = "adam",
         learning_rate = 1e-4,
         output_folder = os.path.join("output", args.output_name if len(args.output_name)>0 else args.dataset)
@@ -70,7 +74,7 @@ if __name__ == "__main__":
         case "mlp":
             model = MultiLayerPerceptron(
                 DIM, args.n_hidden, args.n_layers, 
-                final_activ=torch.nn.Tanh
+                # final_activ=torch.nn.Tanh
                 ).to(config.device)
         
         case "siren":

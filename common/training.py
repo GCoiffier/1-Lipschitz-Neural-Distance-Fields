@@ -37,6 +37,7 @@ class Trainer(M.Logger):
         """Evaluates the model on the test dataset.
         Computes the mean square error between actual distances and output of the model
         """
+        if self.test_loader is None: return
         test_loss = 0.
         testlossfun = nn.MSELoss() # mean square error
         for inputs,labels in self.test_loader:
@@ -61,6 +62,11 @@ class Trainer(M.Logger):
                 train_loss["recons"] = 0.
             if self.config.normal_weight >0. :
                 train_loss["normals"] = 0.
+            if self.config.eikonal_weight >0. :
+                train_loss["eik"] = 0.
+                ones = torch.ones(self.config.batch_size).to(self.config.device)
+            if self.config.gnorm_weight > 0.:
+                train_loss["gnorm"] = 0.
             
             train_length = len(self.train_loaders[0])
             for (X_in, X_out, X_bd) in tqdm(zip(*self.train_loaders), total=train_length):
@@ -90,9 +96,30 @@ class Trainer(M.Logger):
                     grad = autograd.grad(outputs=model(X_bd[0]), inputs=X_bd[0],
                             grad_outputs=torch.ones_like(Y_bd).to(self.config.device),
                             create_graph=True, retain_graph=True)[0]
-                    batch_loss_normals =  self.config.normal_weight*vector_alignment_loss(grad, N_bd[0])
+                    batch_loss_normals = self.config.normal_weight*vector_alignment_loss(grad, N_bd[0])
                     total_batch_loss += batch_loss_normals
                     train_loss["normals"] += float(batch_loss_normals.detach())
+
+                ### Eikonal loss
+                if self.config.eikonal_weight>0.:
+                    x_rdm = 2*torch.rand_like(X_in)-1 # between -1 and 1
+                    x_rdm.requires_grad = True
+                    y_rdm = model(x_rdm)
+                    batch_grad = torch.autograd.grad(y_rdm, x_rdm, grad_outputs=torch.ones_like(y_rdm), create_graph=True)[0]
+                    # batch_loss_eik = self.config.eikonal_weight * F.mse_loss(torch.sum(batch_grad*batch_grad, axis=-1), ones)
+                    batch_loss_eik = self.config.eikonal_weight * F.mse_loss(batch_grad.norm(dim=1), ones)
+                    total_batch_loss += batch_loss_eik
+                    train_loss["eik"] += float(batch_loss_eik.detach())
+
+                ### Max grad norm loss
+                if self.config.gnorm_weight>0.:
+                    x_rdm = 2*torch.rand_like(X_in[0])-1 # between -1 and 1
+                    x_rdm.requires_grad = True
+                    y_rdm = model(x_rdm)
+                    batch_grad = torch.autograd.grad(y_rdm, x_rdm, grad_outputs=torch.ones_like(y_rdm), create_graph=True)[0]
+                    batch_loss_gnorm = -self.config.gnorm_weight * torch.sum(batch_grad.norm(dim=1))
+                    total_batch_loss += batch_loss_gnorm
+                    train_loss["gnorm"] += float(batch_loss_gnorm.detach()) 
 
                 total_batch_loss.backward() # call back propagation
                 self.optimizer.step() 
@@ -143,15 +170,38 @@ class Trainer(M.Logger):
             for cb in self.callbacks:
                 cb.callOnBeginTrain(self, model)
             t0 = time.time()
-            train_loss = 0.
-            lossfun = nn.MSELoss()
+            train_loss = dict()
+            train_loss["fit"] = 0.
+            if self.config.eikonal_weight >0. :
+                train_loss["eik"] = 0.
+                ones = torch.ones(self.config.batch_size).to(self.config.device)
+            if self.config.tv_weight >0. :
+                train_loss["tv"] = 0.
+
             for (x,y_target) in tqdm(self.train_loaders, total=len(self.train_loaders)):
                 self.optimizer.zero_grad() # zero the parameter gradients
                 # forward + backward + optimize
+                x.requires_grad = True
                 y_pred = model(x) # forward computation
-                loss = lossfun(y_pred, y_target)
-                train_loss += loss.item()
-                loss.backward() # call back propagation
+                total_batch_loss = 0.
+
+                ### Fitting loss
+                batch_loss_fit = F.mse_loss(y_pred, y_target)
+                train_loss["fit"] += batch_loss_fit.item()
+                total_batch_loss += batch_loss_fit
+
+                ### Eikonal loss
+                if self.config.eikonal_weight>0.:
+                    x_rdm = 2*torch.rand_like(x)-1 # between -1 and 1
+                    x_rdm.requires_grad = True
+                    y_rdm = model(x_rdm)
+                    batch_grad = torch.autograd.grad(y_rdm, x_rdm, grad_outputs=torch.ones_like(y_rdm), create_graph=True)[0]
+                    # batch_loss_eik = self.config.eikonal_weight * F.mse_loss(torch.sum(batch_grad*batch_grad, axis=-1), ones)
+                    batch_loss_eik = self.config.eikonal_weight * F.mse_loss(batch_grad.norm(dim=1), ones)
+                    total_batch_loss += batch_loss_eik
+                    train_loss["eik"] += float(batch_loss_eik.detach())
+
+                total_batch_loss.backward() # call back propagation
                 self.optimizer.step()
                 for cb in self.callbacks:
                     cb.callOnEndForward(self, model)

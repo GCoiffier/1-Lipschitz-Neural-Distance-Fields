@@ -37,7 +37,6 @@ def generate_square(n_out, n_surf, n_test):
         M.Vec(square.left, square.top, 0.)
     ]
     square_mesh.edges += [(0,1), (1,2), (2,3), (3,0)]
-    # square_mesh = M.mesh.PolyLine(square_mesh)
 
     def distance_to_square(x):
         d = np.array(abs(x) - np.array([SIDE/2,SIDE/2]))
@@ -46,24 +45,24 @@ def generate_square(n_out, n_surf, n_test):
     print("Generate train set")
     domain = M.geometry.BB2D(-1.,-1.,1.,1.)
     print(" | Sampling points")
-    X_bd, N_bd = sample_points_and_normals(square_mesh, n_surf)
+    X_on, N = sample_points_and_normals(square_mesh, n_surf)
     X_other = M.processing.sampling.sample_bounding_box_2D(domain, 10*n_out)[:,:2]
     print(" | Discriminate interior from exterior points")
     D = np.array([distance_to_square(x) for x in X_other])
     X_in = X_other[D<0, :][:n_out]
     X_out = X_other[D>0, :]
     X_out = X_out[:X_in.shape[0], :] # same number of points inside and outside
-    print(f" | Generated {X_in.shape[0]} (inside), {X_out.shape[0]} (outside), {X_bd.shape[0]} (boundary)")
+    print(f" | Generated {X_in.shape[0]} (inside), {X_out.shape[0]} (outside), {X_on.shape[0]} (boundary)")
 
     print("Generate test set")
-    n_test_surf  = min(n_test//4, X_bd.shape[0])
+    n_test_surf  = min(n_test//4, X_on.shape[0])
     n_test_other = n_test - n_test_surf
 
     X_test = M.processing.sampling.sample_bounding_box_2D(domain, n_test_other)
     Y_test = np.array([distance_to_square(x) for x in X_test])
-    X_test = np.concatenate((X_test, X_bd[np.random.choice(X_bd.shape[0], n_test_surf, replace=False), :]))
+    X_test = np.concatenate((X_test, X_on[np.random.choice(X_on.shape[0], n_test_surf, replace=False), :]))
     Y_test = np.concatenate((Y_test,np.zeros(n_test_surf)))
-    return X_in,X_out,X_bd,N_bd,X_test,Y_test
+    return X_in,X_out,X_on,N,X_test,Y_test
 
 
 def generate_square_no_interior(n_train,n_test):
@@ -120,20 +119,20 @@ def generate_square_distances(n_out, n_surf, n_test):
     print("Generate train set")
     domain = M.geometry.BB2D(-1.,-1.,1.,1.)
     print(" | Sampling points")
-    X_bd, _ = sample_points_and_normals(square_mesh, n_surf)
+    X_on, _ = sample_points_and_normals(square_mesh, n_surf)
     X_other = M.processing.sampling.sample_bounding_box_2D(domain, n_out)[:,:2]
     print(" | Compute distances")
     Y_train = np.array([distance_to_square(x) for x in X_other])
-    X_train = np.concatenate([X_other,X_bd])
+    X_train = np.concatenate([X_other,X_on])
     Y_train = np.concatenate([Y_train,np.zeros(n_surf)])
 
     print("Generate test set")
-    n_test_surf  = min(n_test//4, X_bd.shape[0])
+    n_test_surf  = min(n_test//4, X_on.shape[0])
     n_test_other = n_test - n_test_surf
 
     X_test = M.processing.sampling.sample_bounding_box_2D(domain, n_test_other)
     Y_test = np.array([distance_to_square(x) for x in X_test])
-    X_test = np.concatenate((X_test, X_bd[np.random.choice(X_bd.shape[0], n_test_surf, replace=False), :]))
+    X_test = np.concatenate((X_test, X_on[np.random.choice(X_on.shape[0], n_test_surf, replace=False), :]))
     Y_test = np.concatenate((Y_test,np.zeros(n_test_surf)))
     return X_train,Y_train, X_test,Y_test
     
@@ -147,9 +146,9 @@ def generate_circle(n_out, n_surf, n_test):
 
     print(" | Sampling points")
     angles = np.random.random(n_surf)*2*np.pi
-    X_bd = [cmath.rect(RADIUS,ang) for ang in angles]
-    X_bd = np.array([[x.real, x.imag] for x in X_bd]) # convert from complexes to vec2
-    N_bd = X_bd/np.linalg.norm(X_bd,axis=1).reshape((-1,1))
+    X_on = [cmath.rect(RADIUS,ang) for ang in angles]
+    X_on = np.array([[x.real, x.imag] for x in X_on]) # convert from complexes to vec2
+    N = X_on/np.linalg.norm(X_on,axis=1).reshape((-1,1))
     X_other = M.processing.sampling.sample_bounding_box_2D(domain, 10*n_out)[:,:2]
 
     print(" | Discriminate interior from exterior points")    
@@ -157,7 +156,7 @@ def generate_circle(n_out, n_surf, n_test):
     X_in = X_other[D<0, :][:n_out]
     X_out = X_other[D>0, :]
     X_out = X_out[:X_in.shape[0], :] # same number of points inside and outside
-    print(f" | Generated {X_in.shape[0]} (inside), {X_out.shape[0]} (outside), {X_bd.shape[0]} (boundary)")
+    print(f" | Generated {X_in.shape[0]} (inside), {X_out.shape[0]} (outside), {X_on.shape[0]} (boundary)")
 
     print("Generate test set")
     n_test_surf  = n_test//4
@@ -172,7 +171,7 @@ def generate_circle(n_out, n_surf, n_test):
 
     X_test = np.concatenate((X_test, X_test_bd))
     Y_test = np.concatenate((Y_test,np.zeros(n_test_surf)))
-    return X_in,X_out,X_bd,N_bd,X_test,Y_test
+    return X_in,X_out,X_on,N,X_test,Y_test
 
 
 def generate_circle_no_interior(n_train, n_test):
@@ -208,13 +207,13 @@ def generate_circle_distances(n_out, n_surf, n_test):
 
     print(" | Sampling points")
     angles = np.random.random(n_surf)*2*np.pi
-    X_bd = [cmath.rect(RADIUS,ang) for ang in angles]
-    X_bd = np.array([[x.real, x.imag] for x in X_bd]) # convert from complexes to vec2
+    X_on = [cmath.rect(RADIUS,ang) for ang in angles]
+    X_on = np.array([[x.real, x.imag] for x in X_on]) # convert from complexes to vec2
     X_other = M.processing.sampling.sample_bounding_box_2D(domain, 10*n_out)[:,:2]
 
     print(" | Compute distances")    
     Y_train = np.array([distance_to_circle(x) for x in X_other])
-    X_train = np.concatenate((X_other, X_bd))
+    X_train = np.concatenate((X_other, X_on))
     Y_train = np.concatenate((Y_train, np.zeros(n_surf)))
 
     print("Generate test set")
@@ -328,22 +327,22 @@ if __name__ == "__main__":
                 }
         
         case "signed":
-            X_in,X_out,X_bd,N_bd,X_test,Y_test = {
+            X_in,X_out,X_on,N,X_test,Y_test = {
                 "square" : generate_square,
                 "circle" : generate_circle
             }[args.which](args.n_train, args.n_surface, args.n_test)
             arrays_to_save = {
                 f"inputs/{args.which}_Xtrain_in.npy" : X_in,
-                f"inputs/{args.which}_Xtrain_bd.npy" : X_bd,
-                f"inputs/{args.which}_Normals_bd.npy" : N_bd,
+                f"inputs/{args.which}_Xtrain_on.npy" : X_on,
+                f"inputs/{args.which}_Nrml.npy" : N,
                 f"inputs/{args.which}_Xtrain_out.npy" : X_out,
                 f"inputs/{args.which}_Xtest.npy" : X_test,
                 f"inputs/{args.which}_Ytest.npy" : Y_test,
             }
             if args.visu:
                 pc_to_save = {
-                    f"inputs/{args.which}_pctrain.geogram_ascii" : point_cloud_from_arrays((X_in, -1), (X_out,1), (X_bd,0.)),
-                    f"inputs/{args.which}_normals.mesh" : vector_field_from_array(X_bd, N_bd, 0.1) ,
+                    f"inputs/{args.which}_pctrain.geogram_ascii" : point_cloud_from_arrays((X_in, -1), (X_out,1), (X_on,0.)),
+                    f"inputs/{args.which}_normals.mesh" : vector_field_from_array(X_on, N, 0.1) ,
                     f"inputs/{args.which}_pctest.geogram_ascii" : point_cloud_from_array(X_test, Y_test)
                 }
 

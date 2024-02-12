@@ -66,10 +66,6 @@ class CheckpointCB(Callback):
     def __init__(self, when : dict):
         self.when = when
 
-    def __init__(self, frequency):
-        super().__init__()
-        self.freq = frequency
-
     def callOnEndTrain(self, trainer, model):
         epoch = trainer.metrics["epoch"]
         if epoch in self.when:
