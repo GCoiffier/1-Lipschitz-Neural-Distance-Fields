@@ -1,0 +1,5 @@
+libigl
+cgal-bindings
+numba
+torch
+deel-torchlip

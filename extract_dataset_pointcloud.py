@@ -13,10 +13,12 @@ def extract_train_point_cloud(n_pts, V,N, domain):
     domain.pad(0.95,0.95,0.95)
     X_2 = M.sampling.sample_bounding_box_3D(domain, 5*args.n_train)
     X_other = np.concatenate((X_1, X_2))
-    WN = fast_winding_number_for_points(V,N, np.ones(V.shape[0]), X_other)
+    WN = fast_winding_number_for_points(V,N, 0.1*np.ones(V.shape[0]), X_other)
     print("WN:",np.min(WN), np.max(WN))
-    X_out = X_other[WN>0.5]
-    X_in = X_other[WN<0.5]
+    X_out = X_other[WN>0.]
+    X_in = X_other[WN<0.]
+    M.mesh.save(point_cloud_from_array(X_out, WN[WN>0.]), "inputs/out.geogram_ascii")
+    M.mesh.save(point_cloud_from_array(X_in, WN[WN<0.]), "inputs/in.geogram_ascii")
     np.random.shuffle(X_out)
     np.random.shuffle(X_in)
     X_out = X_out[:n_pts]
@@ -63,7 +65,7 @@ if __name__ == "__main__":
             arrays_to_save["X_out"] = X_out
             if args.visu:
                 mesh_to_save["pts"] = point_cloud_from_array((Vtx,-1), (X_out,1.))
-                mesh_to_save["normals"] = vector_field_from_array(Vtx, Nrml, 0.1)
+                mesh_to_save["normals"] = vector_field_from_array(Vtx, Nrml, 0.02)
         case "signed":
             X_in, X_out = extract_train_point_cloud(args.n_train, Vtx, Nrml, domain)
             arrays_to_save["X_in"] = X_in
