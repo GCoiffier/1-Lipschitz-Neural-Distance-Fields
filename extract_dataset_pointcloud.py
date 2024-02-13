@@ -97,7 +97,7 @@ if __name__ == "__main__":
     print("Generate train set")
     mesh_to_save = dict()
     arrays_to_save = {
-        "X_on" : Vtx,
+        "Xtrain_on" : Vtx,
         "Nrml" : N 
     }
     match args.mode:
@@ -107,14 +107,14 @@ if __name__ == "__main__":
             domain.pad(0.95,0.95,0.95)
             X_out2 = M.sampling.sample_bounding_box_3D(domain, args.n_train//2)
             X_out = np.concatenate((X_out1, X_out2))
-            arrays_to_save["X_out"] = X_out
+            arrays_to_save["Xtrain_out"] = X_out
             if args.visu:
                 mesh_to_save["pts"] = point_cloud_from_array((Vtx,-1), (X_out,1.))
                 mesh_to_save["normals"] = vector_field_from_array(Vtx, N, 0.02)
         case "signed":
             X_in, X_out = extract_train_point_cloud(args.n_train, Vtx, N, A, domain, t_in=args.threshold_in, t_out=args.threshold_out)
-            arrays_to_save["X_in"] = X_in
-            arrays_to_save["X_out"] = X_out
+            arrays_to_save["Xtrain_in"] = X_in
+            arrays_to_save["Xtrain_out"] = X_out
             if args.visu:
                 mesh_to_save["pts_on"] = point_cloud_from_array(Vtx)
                 mesh_to_save["pts_in"] = point_cloud_from_array(X_in)
