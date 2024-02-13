@@ -285,6 +285,7 @@ def generate_segment_distances(n_train, n_on, n_test):
     Y_test = np.concatenate((Y_test,np.zeros(m_surf)))
     return X_train, Y_train, X_test, Y_test
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
