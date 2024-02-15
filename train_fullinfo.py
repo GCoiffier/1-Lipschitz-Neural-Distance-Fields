@@ -106,3 +106,7 @@ if __name__ == "__main__":
 
     trainer.add_callbacks(*callbacks)
     trainer.train_full_info(model)
+
+    #### Save final model
+    path = os.path.join(config.output_folder, "model_final.pt")
+    save_model(model, path)

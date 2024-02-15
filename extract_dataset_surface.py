@@ -90,17 +90,20 @@ if __name__ == "__main__":
 
         case "dist":
             if args.importance_sampling:
+                far = args.n_train//10
+                near = args.n_train - far                
                 BETA = 30
                 X_on = M.processing.sampling.sample_points_from_surface(mesh, args.n_boundary)
+                X_far, Y_far = extract_train_point_cloud_distances(10, far, mesh, domain)
                 X_u, Y_u = extract_train_point_cloud_distances(10, 10*args.n_train, mesh, domain)            
                 weight = np.exp(-BETA*abs(Y_u))
                 weight /= np.sum(weight)
-                sampled = np.random.choice(X_u.shape[0],size=args.n_train,replace=False,p=weight)
-                X_train = np.concatenate((X_u[sampled],X_on))
-                Y_train = np.concatenate((Y_u[sampled], np.zeros(args.n_boundary)))
+                sampled = np.random.choice(X_u.shape[0],size=far,replace=False,p=weight)
+                X_train = np.concatenate((X_far, X_u[sampled],X_on))
+                Y_train = np.concatenate((Y_far, Y_u[sampled], np.zeros(args.n_boundary)))
             else:
                 X_train, Y_train = extract_train_point_cloud_distances(args.n_boundary, args.n_train, mesh, domain)
-            arrays_to_save = {"X_train" : X_train, "Y_train" : Y_train}
+            arrays_to_save = {"Xtrain" : X_train, "Ytrain" : Y_train}
             if args.visu:
                 mesh_to_save["pts_train"] = point_cloud_from_array(X_train,Y_train)
 
@@ -118,9 +121,13 @@ if __name__ == "__main__":
         Y_test = abs(Y_test)
     X_test = np.concatenate((X_surf_test, X_other_test))
     Y_test = np.concatenate((np.zeros(X_surf_test.shape[0]), Y_test))
+    arrays_to_save["Xtest"] = X_test
+    arrays_to_save["Ytest"] = Y_test
     if args.visu:
         mesh_to_save["pts_test"] = point_cloud_from_array(X_test,Y_test)
 
+
+    ### Save generated points
     name = M.utils.get_filename(args.input_mesh)
     if args.visu:
         print("\nGenerate visualization output")

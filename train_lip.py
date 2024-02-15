@@ -61,7 +61,7 @@ if __name__ == "__main__":
         eikonal_weight = args.eikonal_weight,
         gnorm_weight = args.gnorm_weight,
         optimizer = "adam",
-        learning_rate = 5e-4,
+        learning_rate = 1e-4,
         output_folder = os.path.join("output", args.output_name if len(args.output_name)>0 else args.dataset)
     )
     os.makedirs(config.output_folder, exist_ok=True)
@@ -179,3 +179,7 @@ if __name__ == "__main__":
         trainer = Trainer((loader_on, loader_out), test_loader, config)
         trainer.add_callbacks(*callbacks)
         trainer.train_lip_unsigned(model)
+
+    #### Save final model
+    path = os.path.join(config.output_folder, "model_final.pt")
+    save_model(model, path)
