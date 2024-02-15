@@ -23,8 +23,8 @@ if __name__ == "__main__":
 
     # model parameters
     parser.add_argument("-model", "--model", choices=["mlp", "siren", "ortho", "sll"], default="mlp")
-    parser.add_argument("-n-layers", type=int, default=8)
-    parser.add_argument("-n-hidden", type=int, default=32)
+    parser.add_argument("-n-layers", "--n-layers", type=int, default=8)
+    parser.add_argument("-n-hidden", "--n-hidden", type=int, default=32)
 
     # optimization parameters
     parser.add_argument("-ne", "--epochs", type=int, default=200, help="Number of epochs")
@@ -61,11 +61,17 @@ if __name__ == "__main__":
     Y_train = torch.Tensor(Y_train).to(config.device)
     train_loader = DataLoader(TensorDataset(X_train, Y_train), batch_size=config.batch_size, shuffle=True)
 
-    X_test = np.load(os.path.join("inputs", f"{args.dataset}_Xtest.npy"))
-    X_test = torch.Tensor(X_test).to(config.device)
-    Y_test = np.load(os.path.join("inputs", f"{args.dataset}_Ytest.npy")).reshape((X_test.shape[0], 1))
-    Y_test = torch.Tensor(Y_test).to(config.device)
-    test_loader = DataLoader(TensorDataset(X_test,Y_test), batch_size=config.test_batch_size)
+    X_test,Y_test = None,None
+    test_loader = None
+    X_test_path = os.path.join("inputs", f"{args.dataset}_Xtest.npy")
+    Y_test_path = os.path.join("inputs",f"{args.dataset}_Ytest.npy")
+    if os.path.exists(X_test_path) and os.path.exists(Y_test_path):
+        X_test = np.load(os.path.join("inputs", f"{args.dataset}_Xtest.npy"))
+        Y_test = np.load(os.path.join("inputs", f"{args.dataset}_Ytest.npy")).reshape((X_test.shape[0], 1))
+        X_test = torch.Tensor(X_test).to(config.device)
+        Y_test = torch.Tensor(Y_test).to(config.device)
+        test_loader = DataLoader(TensorDataset(X_test, Y_test), batch_size=config.test_batch_size)
+        print(f"Succesfully loaded test set: {X_test.shape}\n")
 
     DIM = X_train.shape[1] # dimension of the dataset (2 or 3)
 
@@ -74,7 +80,7 @@ if __name__ == "__main__":
         case "mlp":
             model = MultiLayerPerceptron(
                 DIM, args.n_hidden, args.n_layers, 
-                # final_activ=torch.nn.Tanh
+                final_activ=torch.nn.Tanh
                 ).to(config.device)
         
         case "siren":
