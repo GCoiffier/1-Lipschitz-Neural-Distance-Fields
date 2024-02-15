@@ -36,10 +36,11 @@ def extract_train_point_cloud_distances(n_surf, n_pt, mesh, domain):
     X_on = M.processing.sampling.sample_points_from_surface(mesh, n_surf)
     print(" | Sample uniform distribution in domain")
     domain.pad(0.05,0.05,0.05)
-    X_out1 = M.processing.sampling.sample_bounding_box_3D(domain, n_pt//2)
-    domain.pad(0.95,0.95,0.95)
-    X_out2 = M.processing.sampling.sample_bounding_box_3D(domain, n_pt//2)
+    X_out1 = M.processing.sampling.sample_bounding_box_3D(domain, n_pt - n_pt//4)
+    domain.pad(1.95,1.95,1.95)
+    X_out2 = M.processing.sampling.sample_bounding_box_3D(domain, n_pt//4)
     X_out = np.concatenate((X_out1, X_out2))
+    print(" | Compute distances")
     Y_out,_,_ = signed_distance(X_out, np.array(mesh.vertices), np.array(mesh.faces))
     print(f"Sampled : {X_on.shape[0]} (surface), {X_out.shape[0]} (outside)")
     return np.concatenate((X_out,X_on)), np.concatenate((Y_out, np.zeros(X_on.shape[0])))
@@ -89,7 +90,7 @@ if __name__ == "__main__":
 
         case "dist":
             if args.importance_sampling:
-                BETA = 50
+                BETA = 30
                 X_on = M.processing.sampling.sample_points_from_surface(mesh, args.n_boundary)
                 X_u, Y_u = extract_train_point_cloud_distances(10, 10*args.n_train, mesh, domain)            
                 weight = np.exp(-BETA*abs(Y_u))
@@ -117,6 +118,8 @@ if __name__ == "__main__":
         Y_test = abs(Y_test)
     X_test = np.concatenate((X_surf_test, X_other_test))
     Y_test = np.concatenate((np.zeros(X_surf_test.shape[0]), Y_test))
+    if args.visu:
+        mesh_to_save["pts_test"] = point_cloud_from_array(X_test,Y_test)
 
     name = M.utils.get_filename(args.input_mesh)
     if args.visu:

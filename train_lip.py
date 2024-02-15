@@ -26,8 +26,8 @@ if __name__ == "__main__":
 
     # model parameters
     parser.add_argument("-model","--model", choices=["ortho", "sll"], default="ortho")
-    parser.add_argument("-n-layers", type=int, default=8)
-    parser.add_argument("-n-hidden", type=int, default=32)
+    parser.add_argument("-n-layers", "--n-layers", type=int, default=8)
+    parser.add_argument("-n-hidden", "--n-hidden", type=int, default=32)
 
     # optimization parameters
     parser.add_argument("-ne", "--epochs", type=int, default=200, help="Number of epochs")
