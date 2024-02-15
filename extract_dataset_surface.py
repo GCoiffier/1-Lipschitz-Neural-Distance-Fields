@@ -11,7 +11,7 @@ def extract_train_point_cloud(n_surf, n_train, mesh, domain):
     domain.pad(0.05,0.05,0.05)
     X_other1 = M.processing.sampling.sample_bounding_box_3D(domain, 50*n_train)
     domain.pad(0.95,0.95,0.95)
-    X_other2 = M.processing.sampling.sample_bounding_box_3D(domain, 30*n_train)
+    X_other2 = M.processing.sampling.sample_bounding_box_3D(domain, 5*n_train)
     X_other = np.concatenate((X_other1, X_other2))
     np.random.shuffle(X_other)
     Y_other = fast_winding_number_for_meshes(np.array(mesh.vertices), np.array(mesh.faces, dtype=np.int32), X_other)
