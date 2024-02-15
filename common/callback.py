@@ -115,7 +115,7 @@ class Render2DCB(Callback):
                 self.domain, 
                 trainer.config.device, 
                 res=self.res, 
-                batch_size=trainer.config.test_batch_size
+                batch_size=trainer.config.test_batch_size,
             )
 
 class UpdateHkrRegulCB(Callback):

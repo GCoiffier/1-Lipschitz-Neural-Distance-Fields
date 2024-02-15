@@ -210,3 +210,48 @@ class Trainer(M.Logger):
             for cb in self.callbacks:
                 cb.callOnEndTrain(self, model)
             self.evaluate_model(model)
+
+    def train_sal(self, model):
+        self.optimizer = self.get_optimizer(model)
+        sal_lossfun = SALLoss(1., self.config.metric)
+
+        for epoch in range(self.config.n_epochs):  # loop over the dataset multiple times
+            self.metrics["epoch"] = epoch+1
+            for cb in self.callbacks:
+                cb.callOnBeginTrain(self, model)
+            t0 = time.time()
+            train_loss = dict()
+            train_loss["sal"] = 0.
+            if self.config.attach_weight >0.:
+                train_loss["fit"] = 0.
+
+            train_length = len(self.train_loaders[0])
+            for ((x_out,y_target), x_on) in tqdm(zip(*self.train_loaders), total=train_length):
+                self.optimizer.zero_grad() # zero the parameter gradients
+                # forward + backward + optimize
+                x_out.requires_grad = True
+                x_on.requires_grad = True
+                total_batch_loss = 0.
+
+                ### SAL loss
+                y_pred = model(x_out) # forward computation
+                batch_loss_sal = sal_lossfun(y_pred, y_target)
+                train_loss["sal"] += float(batch_loss_sal.detach())
+                total_batch_loss += batch_loss_sal
+
+                ### Fitting loss
+                if self.config.attach_weight>0.:
+                    y_pred0 = model(x_on)
+                    batch_loss_fit = self.config.attach_weight * torch.sum(y_pred0**2)
+                    train_loss["fit"] += batch_loss_fit.item()
+                    total_batch_loss += batch_loss_fit
+
+                total_batch_loss.backward() # call back propagation
+                self.optimizer.step()
+                for cb in self.callbacks:
+                    cb.callOnEndForward(self, model)
+            self.metrics["train_loss"] = train_loss
+            self.metrics["epoch_time"] = time.time() - t0
+            for cb in self.callbacks:
+                cb.callOnEndTrain(self, model)
+            self.evaluate_model(model)

@@ -113,7 +113,6 @@ if __name__ == "__main__":
         X_train_out = np.load(os.path.join("inputs", f"{args.dataset}_Xtrain_out.npy"))
         X_train_out = torch.Tensor(X_train_out).to(config.device)
         loader_out = DataLoader(TensorDataset(X_train_out), batch_size=config.batch_size, shuffle=True)
-        train_loader = zip(loader_on, loader_out)
         
         print(f"Succesfully loaded train set:\n", 
               f"Outside: {X_train_out.shape}\n",
@@ -136,16 +135,8 @@ if __name__ == "__main__":
     DIM = X_train_out.shape[1] # dimension of the dataset (2 or 3)
 
     #### Create model ####
-    if args.model.lower() == "ortho":
-        model = DenseLipNetwork(
-            DIM, args.n_hidden, args.n_layers,
-            group_sort_size=0, niter_spectral=3, niter_bjorck=15
-        ).to(config.device)
-
-    elif args.model.lower() == "sll":
-        model = DenseSDP(DIM, args.n_hidden, args.n_layers).to(config.device)
+    model = select_model(args.model, DIM, args.n_layers, args.n_hidden).to(config.device)
     print("PARAMETERS:", count_parameters(model))
-
 
     #### Export point cloud for visualization ####
     if config.signed:
