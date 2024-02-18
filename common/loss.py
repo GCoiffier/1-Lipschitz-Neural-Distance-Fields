@@ -32,8 +32,7 @@ class SALLoss:
         return self.callfun(y_pred, y_target)
 
     def SAL_l2(self,y_pred,y_target):
-        return torch.mean((torch.abs(y_pred) - y_target)**2)
-        # return torch.mean(torch.abs(torch.abs(y_pred) - y_target)**self.l)
+        return torch.mean(torch.abs(torch.abs(y_pred) - y_target)**self.l)
     
     def SAL_l0(self,y_pred,y_target):
         return torch.mean(torch.abs(torch.abs(y_pred) - 1)**self.l)

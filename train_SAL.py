@@ -94,11 +94,15 @@ if __name__ == "__main__":
     DIM = X_train_out.shape[ 1] # dimension of the dataset (2 or 3)
 
     #### Create model
-    model = MultiLayerPerceptronSkips(DIM, args.n_hidden, args.n_layers, skips=[args.n_layers//2]).to(config.device)
+    # model = MultiLayerPerceptronSkips(DIM, args.n_hidden, args.n_layers, skips=[args.n_layers//2]).to(config.device)
+    # model = MultiLayerPerceptronSkips(DIM, args.n_hidden, args.n_layers, skips=[]).to(config.device)
+    model = MultiLayerPerceptron(DIM, args.n_hidden, args.n_layers).to(config.device)
     print("PARAMETERS:", count_parameters(model))
 
     M.mesh.save(
-        point_cloud_from_arrays((X_train_out,1), (X_train_on,-1)), 
+        point_cloud_from_arrays(
+            (X_train_out.detach().cpu(),1), 
+            (X_train_on.detach().cpu(),-1)), 
         os.path.join(config.output_folder, f"pc_0.geogram_ascii")
     )
 

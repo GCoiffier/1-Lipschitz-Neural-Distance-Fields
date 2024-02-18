@@ -48,7 +48,7 @@ if __name__ == "__main__":
         eikonal_weight = args.eikonal_weight,
         tv_weight = args.total_variation_weight,
         optimizer = "adam",
-        learning_rate = 1e-4,
+        learning_rate = 5e-4,
         output_folder = os.path.join("output", args.output_name if len(args.output_name)>0 else args.dataset)
     )
     os.makedirs(config.output_folder, exist_ok=True)
@@ -60,6 +60,7 @@ if __name__ == "__main__":
     Y_train = np.load(os.path.join("inputs", f"{args.dataset}_Ytrain.npy")).reshape((X_train.shape[0], 1))
     Y_train = torch.Tensor(Y_train).to(config.device)
     train_loader = DataLoader(TensorDataset(X_train, Y_train), batch_size=config.batch_size, shuffle=True)
+    print(f"Succesfully loaded train set: {X_train.shape}\n")
 
     X_test,Y_test = None,None
     test_loader = None
@@ -76,7 +77,7 @@ if __name__ == "__main__":
     DIM = X_train.shape[1] # dimension of the dataset (2 or 3)
 
     #### Create model and setup trainer
-    model = select_model(args.model, DIM, args.n_layers, args.n_hidden).to(config.device)
+    model = select_model(args.model, DIM, args.n_layers, args.n_hidden, final_activ=torch.nn.Tanh).to(config.device)
     print("PARAMETERS:", count_parameters(model))
 
     trainer = Trainer(train_loader, test_loader, config)

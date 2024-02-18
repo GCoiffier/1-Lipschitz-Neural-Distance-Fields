@@ -132,7 +132,6 @@ class Trainer(M.Logger):
                 cb.callOnEndTrain(self, model)
             self.evaluate_model(model)
             
-
     def train_lip_unsigned(self, model):
         self.optimizer = self.get_optimizer(model)
         for epoch in range(self.config.n_epochs):
@@ -162,7 +161,6 @@ class Trainer(M.Logger):
                 cb.callOnEndTrain(self, model)
             self.evaluate_model(model)
 
-    
     def train_full_info(self, model):
         self.optimizer = self.get_optimizer(model)   
         for epoch in range(self.config.n_epochs):  # loop over the dataset multiple times

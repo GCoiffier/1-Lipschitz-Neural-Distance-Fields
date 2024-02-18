@@ -36,9 +36,9 @@ def extract_train_point_cloud_distances(n_surf, n_pt, mesh, domain):
     X_on = M.processing.sampling.sample_points_from_surface(mesh, n_surf)
     print(" | Sample uniform distribution in domain")
     domain.pad(0.05,0.05,0.05)
-    X_out1 = M.processing.sampling.sample_bounding_box_3D(domain, n_pt - n_pt//4)
+    X_out1 = M.processing.sampling.sample_bounding_box_3D(domain, n_pt - n_pt//10)
     domain.pad(1.95,1.95,1.95)
-    X_out2 = M.processing.sampling.sample_bounding_box_3D(domain, n_pt//4)
+    X_out2 = M.processing.sampling.sample_bounding_box_3D(domain, n_pt//10)
     X_out = np.concatenate((X_out1, X_out2))
     print(" | Compute distances")
     Y_out,_,_ = signed_distance(X_out, np.array(mesh.vertices), np.array(mesh.faces))
@@ -89,18 +89,15 @@ if __name__ == "__main__":
                 mesh_to_save["normals"] = vector_field_from_array(X_on, N, 0.1)
 
         case "dist":
-            if args.importance_sampling:
-                far = args.n_train//10
-                near = args.n_train - far                
-                BETA = 30
+            if args.importance_sampling:          
+                BETA = 50
                 X_on = M.processing.sampling.sample_points_from_surface(mesh, args.n_boundary)
-                X_far, Y_far = extract_train_point_cloud_distances(10, far, mesh, domain)
                 X_u, Y_u = extract_train_point_cloud_distances(10, 10*args.n_train, mesh, domain)            
                 weight = np.exp(-BETA*abs(Y_u))
                 weight /= np.sum(weight)
-                sampled = np.random.choice(X_u.shape[0],size=far,replace=False,p=weight)
-                X_train = np.concatenate((X_far, X_u[sampled],X_on))
-                Y_train = np.concatenate((Y_far, Y_u[sampled], np.zeros(args.n_boundary)))
+                sampled = np.random.choice(X_u.shape[0],size=args.n_train,replace=False,p=weight)
+                X_train = np.concatenate((X_u[sampled],X_on))
+                Y_train = np.concatenate((Y_u[sampled], np.zeros(args.n_boundary)))
             else:
                 X_train, Y_train = extract_train_point_cloud_distances(args.n_boundary, args.n_train, mesh, domain)
             arrays_to_save = {"Xtrain" : X_train, "Ytrain" : Y_train}

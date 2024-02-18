@@ -26,7 +26,7 @@ class MultiLayerPerceptronSkips(nn.Module):
     def __init__(self, dim_in, dim_hidden, n_layers, skips=[]):
         super().__init__()
         self.skips = [x in skips for x in range(n_layers)]
-        self.layers = []
+        self.layers = nn.ModuleList([])
         self.layers.append(nn.Linear(dim_in, dim_hidden))
         for i in range(1,n_layers-1):
             if self.skips[i+1]:
