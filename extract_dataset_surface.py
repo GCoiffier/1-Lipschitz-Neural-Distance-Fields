@@ -90,7 +90,7 @@ if __name__ == "__main__":
 
         case "dist":
             if args.importance_sampling:          
-                BETA = 50
+                BETA = 30
                 X_on = M.processing.sampling.sample_points_from_surface(mesh, args.n_boundary)
                 X_u, Y_u = extract_train_point_cloud_distances(10, 10*args.n_train, mesh, domain)            
                 weight = np.exp(-BETA*abs(Y_u))
