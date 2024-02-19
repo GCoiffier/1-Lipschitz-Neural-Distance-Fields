@@ -106,11 +106,11 @@ if __name__ == "__main__":
         case "dist":
             X_on, N = sample_points_and_normals(mesh, args.n_boundary)
             X_out = M.processing.sampling.sample_bounding_box_2D(domain,args.n_train)[:,:2]
-            Y_out = signed_distance(np.pad(X_out, ((0,0), (0,1))), V, F)
+            Y_out,_,_ = signed_distance(np.pad(X_out, ((0,0), (0,1))), V, F)
             X_train = np.concatenate((X_out, X_on))
             Y_train = np.concatenate((Y_out, np.zeros(X_on.shape[0])))
-            arrays_to_save["X_train"] = X_train
-            arrays_to_save["Y_train"] = Y_train
+            arrays_to_save["Xtrain"] = X_train
+            arrays_to_save["Ytrain"] = Y_train
             if args.visu:
                 mesh_to_save["pts_train"] = point_cloud_from_array(X_train, Y_train)
 
