@@ -1,6 +1,7 @@
 from .models import save_model
 from .visualize import render_sdf_2d, parameter_singular_values
 import os
+import csv
 
 class Callback:
     """
@@ -12,6 +13,7 @@ class Callback:
     - At the end of an training epoch
     - At the end of a forward/backward pass
     - At the end of a testing epoch
+    - At the very end of the training procedure
     """
     def __init__(self, *args, **kwargs):
         pass
@@ -37,7 +39,10 @@ class LoggerCB(Callback):
     def __init__(self, file_path):
         super().__init__()
         self.path = file_path
-        self.logged = dict()
+        self.logged = {"epoch" : -1, "time" : 0, "train_loss" : -1, "test_loss" : -1}
+        with open(self.path, "w") as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=self.logged.keys())
+            writer.writeheader()
 
     def callOnEndTrain(self, trainer, model):
         self.logged.update({"epoch" :  trainer.metrics["epoch"]})
@@ -49,15 +54,12 @@ class LoggerCB(Callback):
         self.logged.update({"test_loss" : trainer.metrics["test_loss"]})
         trainer.log(f"Test loss after epoch {trainer.metrics['epoch']} : {trainer.metrics['test_loss']}")
         print()
-        self.write_log()
+        self._write_log()
 
-    def write_log(self):
-        with open(self.path, "a") as f:
-            s = ""
-            for k in self.logged.keys():
-                s += "{} : {}, ".format(k, self.logged[k])
-            s+= "\n"
-            f.write(s)
+    def _write_log(self):
+        with open(self.path, "a") as csvfile:
+            writer = csv.DictWriter(csvfile, fieldnames=self.logged.keys())
+            writer.writerow(self.logged)
 
 class CheckpointCB(Callback):
     """
