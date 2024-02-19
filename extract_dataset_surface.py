@@ -122,6 +122,7 @@ if __name__ == "__main__":
     arrays_to_save["Ytest"] = Y_test
     if args.visu:
         mesh_to_save["pts_test"] = point_cloud_from_array(X_test,Y_test)
+        mesh_to_save["surface"] = mesh
 
 
     ### Save generated points
