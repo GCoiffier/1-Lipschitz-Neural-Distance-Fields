@@ -82,6 +82,8 @@ if __name__ == "__main__":
 
         case "signed":
             X_on, N, X_in, X_out = extract_train_point_cloud(args.n_boundary, args.n_train, mesh, domain)
+            # X_in = np.concatenate((X_on,X_in))[:X_out.shape[0],:]
+
             arrays_to_save = { "Xtrain_on" : X_on, "Xtrain_in" : X_in, "Xtrain_out" : X_out, "Nrml" : N}
             if args.visu:
                 mesh_to_save["pts_train"] = point_cloud_from_arrays((X_in,-1),(X_out,1),(X_on,0))

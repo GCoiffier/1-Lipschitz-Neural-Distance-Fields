@@ -61,7 +61,7 @@ if __name__ == "__main__":
         eikonal_weight = args.eikonal_weight,
         gnorm_weight = args.gnorm_weight,
         optimizer = "adam",
-        learning_rate = 1e-4,
+        learning_rate = 5e-4,
         output_folder = os.path.join("output", args.output_name if len(args.output_name)>0 else args.dataset)
     )
     os.makedirs(config.output_folder, exist_ok=True)
@@ -155,10 +155,11 @@ if __name__ == "__main__":
     #### Building and calling the trainer ####
     callbacks = []
     callbacks.append(LoggerCB(os.path.join(config.output_folder, "log.csv")))
-    callbacks.append(CheckpointCB([x for x in range(0, config.n_epochs, config.checkpoint_freq) if x>0]))
-    if DIM==2:
-        plot_domain = get_BB(X_train_on, DIM, pad=0.5) if config.signed else get_BB(X_train_on, DIM, pad=0.5)
-        callbacks.append(Render2DCB(config.output_folder, config.checkpoint_freq, plot_domain, res=1000))
+    if config.checkpoint_freq>0:
+        callbacks.append(CheckpointCB([x for x in range(0, config.n_epochs, config.checkpoint_freq) if x>0]))
+        if DIM==2:
+            plot_domain = get_BB(X_train_on, DIM, pad=0.5) if config.signed else get_BB(X_train_on, DIM, pad=0.5)
+            callbacks.append(Render2DCB(config.output_folder, config.checkpoint_freq, plot_domain, res=1000))
     # callbacks.append(ComputeSingularValuesCB(config.checkpoint_freq))
     callbacks.append(UpdateHkrRegulCB({1 : 1., 10 : 10., 20: 100., 30: config.loss_regul}))
     

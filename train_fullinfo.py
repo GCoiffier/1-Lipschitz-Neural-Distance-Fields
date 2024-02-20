@@ -84,10 +84,11 @@ if __name__ == "__main__":
     trainer = Trainer(train_loader, test_loader, config)
     callbacks = []
     callbacks.append(LoggerCB(os.path.join(config.output_folder, "log.csv")))
-    callbacks.append(CheckpointCB([x for x in range(0, config.n_epochs, config.checkpoint_freq) if x>0]))
-    if DIM==2:
-        plot_domain = get_BB(X_train, DIM, pad=0.5)
-        callbacks.append(Render2DCB(config.output_folder, config.checkpoint_freq, plot_domain, res=1000))
+    if config.checkpoint_freq>0:
+        callbacks.append(CheckpointCB([x for x in range(0, config.n_epochs, config.checkpoint_freq) if x>0]))
+        if DIM==2:
+            plot_domain = get_BB(X_train, DIM, pad=0.5)
+            callbacks.append(Render2DCB(config.output_folder, config.checkpoint_freq, plot_domain, res=1000))
 
     trainer.add_callbacks(*callbacks)
     trainer.train_full_info(model)
