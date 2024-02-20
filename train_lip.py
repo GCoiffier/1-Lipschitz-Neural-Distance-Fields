@@ -160,7 +160,7 @@ if __name__ == "__main__":
         plot_domain = get_BB(X_train_on, DIM, pad=0.5) if config.signed else get_BB(X_train_on, DIM, pad=0.5)
         callbacks.append(Render2DCB(config.output_folder, config.checkpoint_freq, plot_domain, res=1000))
     # callbacks.append(ComputeSingularValuesCB(config.checkpoint_freq))
-    callbacks.append(UpdateHkrRegulCB({1 : 1., 10 : 10., 20: 100.}))
+    callbacks.append(UpdateHkrRegulCB({1 : 1., 10 : 10., 20: 100., 30: config.loss_regul}))
     
     if config.signed:
         trainer = Trainer((loader_in, loader_out, loader_bd), test_loader, config)

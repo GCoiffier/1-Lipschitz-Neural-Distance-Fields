@@ -16,7 +16,7 @@ def MultiLayerPerceptron(dim_in, dim_hidden, n_layers, activ=nn.ReLU, final_acti
     layers.append(final_activ())
 
     model = nn.Sequential(*layers)
-    model.meta = [dim_in, dim_hidden, n_layers]
+    model.meta = [dim_in, dim_hidden, n_layers, activ, final_activ]
     model.id = "MLP"
     return model
     

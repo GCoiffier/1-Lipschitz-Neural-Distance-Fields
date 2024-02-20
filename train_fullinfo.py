@@ -78,6 +78,7 @@ if __name__ == "__main__":
 
     #### Create model and setup trainer
     model = select_model(args.model, DIM, args.n_layers, args.n_hidden, final_activ=torch.nn.Tanh).to(config.device)
+    print("MODEL", model)
     print("PARAMETERS:", count_parameters(model))
 
     trainer = Trainer(train_loader, test_loader, config)

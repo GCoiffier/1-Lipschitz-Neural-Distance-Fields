@@ -122,16 +122,13 @@ if __name__ == "__main__":
     arrays_to_save["Ytest"] = Y_test
     if args.visu:
         mesh_to_save["pts_test"] = point_cloud_from_array(X_test,Y_test)
-        mesh_to_save["surface"] = mesh
+    mesh_to_save["surface"] = mesh
 
 
     ### Save generated points
     name = M.utils.get_filename(args.input_mesh)
-    if args.visu:
-        print("\nGenerate visualization output")
-        for file,mesh in mesh_to_save.items():
-            M.mesh.save(mesh, f"inputs/{name}_{file}.geogram_ascii")
-
     print("Saving files")
+    for file,mesh in mesh_to_save.items():
+        M.mesh.save(mesh, f"inputs/{name}_{file}.geogram_ascii")
     for file,ar in arrays_to_save.items():
         np.save(f"inputs/{name}_{file}.npy", ar)
