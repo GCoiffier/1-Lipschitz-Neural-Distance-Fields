@@ -33,7 +33,7 @@ def select_model(name, DIM, n_layers, n_hidden, **kwargs):
     match name.lower():
          
         case "mlp":
-            final_activ = kwargs.get("final_activ", torch.nn.Tanh)
+            final_activ = kwargs.get("final_activ", torch.nn.Identity)
             return MultiLayerPerceptron(
                 DIM, n_hidden, n_layers, 
                 final_activ=final_activ)

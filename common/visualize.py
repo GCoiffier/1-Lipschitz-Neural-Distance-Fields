@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 import matplotlib.colors as colors
 from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
-
+from skimage.measure import marching_cubes
 
 def point_cloud_from_array(X, D=None):
     pc = M.mesh.PointCloud()
@@ -116,3 +116,41 @@ def parameter_singular_values(model):
             # data.append(f"{layer}, {s}")
             data.append(f"{layer}, min={s.min()}, max={s.max()}")
     return data
+
+
+def reconstruct_surface_marching_cubes(model, domain, device, iso=0, res=100, batch_size=5000):
+    if isinstance(iso, (int,float)): iso = [iso]
+    
+    ### Feed grid to model
+    L = [np.linspace(domain.min_coords[i], domain.max_coords[i], res) for i in range(3)]
+    pts = np.hstack((np.meshgrid(*L))).swapaxes(0,1).reshape(3,-1).T
+    pts = torch.Tensor(pts).to(device)
+    pts = DataLoader(TensorDataset(pts), batch_size=batch_size)
+    dist_values = []
+
+    for (batch,) in tqdm(pts, total=len(pts)):
+        batch.requires_grad = False
+        v_batch = model(batch).cpu()
+        dist_values.append(v_batch.detach().cpu().numpy())
+
+    dist_values = np.concatenate(dist_values)
+    dist_values = dist_values.reshape((res,res,res))
+
+    ### Call marching cubes
+    to_save = dict()
+    for ioff,off in enumerate(iso):
+        try:
+            verts,faces,normals,values = marching_cubes(dist_values, level=off)
+            values = values[:, np.newaxis]
+            m = M.mesh.RawMeshData()
+            m.vertices += list(verts)
+            m.faces += list(faces)
+            m = M.mesh.SurfaceMesh(m)
+            normal_attr = m.vertices.create_attribute("normals", float, 3, dense=True)
+            normal_attr._data = normals
+            values_attr = m.vertices.create_attribute("values", float, 1, dense=True)
+            values_attr._data = values
+            to_save[(ioff, off)] = m
+        except ValueError:
+            continue
+    return to_save

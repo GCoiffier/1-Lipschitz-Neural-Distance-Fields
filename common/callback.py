@@ -1,5 +1,6 @@
 from .models import save_model
-from .visualize import render_sdf_2d, parameter_singular_values
+from .visualize import render_sdf_2d, parameter_singular_values, reconstruct_surface_marching_cubes
+import mouette as M
 import os
 import csv
 
@@ -120,6 +121,31 @@ class Render2DCB(Callback):
                 batch_size=trainer.config.test_batch_size,
             )
 
+class MarchingCubeCB(Callback):
+    def __init__(self, save_folder, freq, domain, res=100, iso=0):
+        super().__init__()
+        self.save_folder = save_folder
+        self.freq = freq
+        self.domain = domain
+        self.res = res
+        if isinstance(iso,float):
+            self.iso = [iso]
+        else:
+            self.iso = iso
+    
+    def callOnEndTrain(self, trainer, model):
+        epoch = trainer.metrics["epoch"]
+        if self.freq>0 and epoch%self.freq==0:
+            iso_surfaces = reconstruct_surface_marching_cubes(
+                model, 
+                self.domain, 
+                trainer.config.device, 
+                self.iso, 
+                self.res, 
+                trainer.config.test_batch_size)
+            for (n,off),mesh in iso_surfaces.items():
+                M.mesh.save(mesh, os.path.join(self.save_folder, f"e{epoch:04d}_n{n:02d}_iso{round(1000*off)}.obj"))
+    
 class UpdateHkrRegulCB(Callback):
 
     def __init__(self, when : dict):

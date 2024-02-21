@@ -18,6 +18,7 @@ class Trainer(M.Logger):
         self.train_loaders = train_loaders
         self.test_loader = test_loader
         self.optimizer = None
+        self.scheduler = None
         self.callbacks = []
         self.metrics = dict()
     
@@ -27,6 +28,10 @@ class Trainer(M.Logger):
         else:
             optimizer = torch.optim.SGD(model.parameters(), lr=self.config.learning_rate, momentum=0.9)
         return optimizer
+    
+    def get_scheduler(self):
+        if self.optimizer is None : return None
+        return torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, factor=0.5, patience=10)
 
     def add_callbacks(self, *args):
         for cb in args:
@@ -50,6 +55,7 @@ class Trainer(M.Logger):
 
     def train_lip(self, model):
         self.optimizer = self.get_optimizer(model)
+        self.scheduler = self.get_scheduler()
         for epoch in range(self.config.n_epochs):
             self.metrics["epoch"] = epoch+1
             for cb in self.callbacks:
@@ -74,9 +80,12 @@ class Trainer(M.Logger):
                 # forward + backward + optimize
                 if self.config.normal_weight>0.:
                     X_bd, N_bd = X_bd
+                    X_bd.requires_grad = True
+                else:
+                    X_bd, = X_bd
                 Y_in = model(X_in[0]) # forward computation
                 Y_out = model(X_out[0])
-                Y_bd = model(X_bd[0])
+                Y_bd = model(X_bd)
                 total_batch_loss = 0.
 
                 ### HKR loss
@@ -84,21 +93,20 @@ class Trainer(M.Logger):
                 train_loss["hkr"] += float(batch_loss_hkr.detach())
                 total_batch_loss += batch_loss_hkr
                 
-                ### Reconstruction loss
-                if self.config.attach_weight>0.:
-                    batch_loss_recons = self.config.attach_weight * torch.sum(Y_bd**2)
-                    train_loss["recons"] += float(batch_loss_recons.detach())
-                    total_batch_loss += batch_loss_recons
-
                 ### Normal fitting loss
                 if self.config.normal_weight>0.:
-                    X_bd[0].requires_grad = True
-                    grad = autograd.grad(outputs=model(X_bd[0]), inputs=X_bd[0],
+                    grad = autograd.grad(outputs=Y_bd, inputs=X_bd,
                             grad_outputs=torch.ones_like(Y_bd).to(self.config.device),
                             create_graph=True, retain_graph=True)[0]
                     batch_loss_normals = self.config.normal_weight*vector_alignment_loss(grad, N_bd[0])
                     total_batch_loss += batch_loss_normals
                     train_loss["normals"] += float(batch_loss_normals.detach())
+               
+                ### Reconstruction loss
+                if self.config.attach_weight>0.:
+                    batch_loss_recons = self.config.attach_weight * torch.sum(Y_bd**2)
+                    train_loss["recons"] += float(batch_loss_recons.detach())
+                    total_batch_loss += batch_loss_recons
 
                 ### Eikonal loss
                 if self.config.eikonal_weight>0.:
@@ -125,6 +133,9 @@ class Trainer(M.Logger):
                 self.optimizer.step() 
                 for cb in self.callbacks:
                     cb.callOnEndForward(self, model)
+            
+            if self.scheduler is not None:
+                self.scheduler.step()
 
             self.metrics["train_loss"] = train_loss
             self.metrics["epoch_time"] = time.time() - t0

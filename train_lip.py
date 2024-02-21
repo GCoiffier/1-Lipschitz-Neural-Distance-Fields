@@ -84,7 +84,7 @@ if __name__ == "__main__":
         ratio = X_train_in.shape[0]//X_train_on.shape[0]
         
         Normals = None
-        if config.normal_weight>0. and os.path.exists(normal_path := os.path.join("inputs", f"{args.dataset}_Normals_bd.npy")):
+        if config.normal_weight>0. and os.path.exists(normal_path := os.path.join("inputs", f"{args.dataset}_Nrml.npy")):
             Normals = np.load(normal_path)
             Normals = torch.Tensor(Normals).to(config.device)
         elif config.normal_weight>0. :

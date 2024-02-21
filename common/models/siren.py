@@ -35,7 +35,7 @@ class SirenLayer(nn.Module):
         return self.activation(nn.functional.linear(x, self.weight, self.bias))
 
 
-def SirenNet(dim_in, dim_hidden, n_layers, w0:float = 30., w0_first_layer:float = 30.):
+def SirenNet(dim_in, dim_hidden, n_layers, w0:float = 6., w0_first_layer:float = 30.):
     layers = []
     # First dim_in -> dim_hidden layer
     layers.append(SirenLayer(dim_in, dim_hidden, w0_first_layer, is_first_layer=True))

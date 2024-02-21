@@ -93,6 +93,7 @@ if __name__ == "__main__":
                 X_out = X_other[Y_other>1e-2, :][:args.n_train]
                 ok = (X_in.shape[0] == args.n_train and X_out.shape[0] == args.n_train)
                 mult *= 5
+            # X_in = np.concatenate((X_on,X_in))[:X_out.shape[0],:]
             print(f" | Generated {X_in.shape[0]} (inside), {X_out.shape[0]} (outside), {X_on.shape[0]} (boundary)")
             arrays_to_save["Xtrain_on"] = X_on
             arrays_to_save["Nrml"] = N

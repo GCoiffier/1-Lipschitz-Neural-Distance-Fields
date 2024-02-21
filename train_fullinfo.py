@@ -29,6 +29,7 @@ if __name__ == "__main__":
     # optimization parameters
     parser.add_argument("-ne", "--epochs", type=int, default=200, help="Number of epochs")
     parser.add_argument('-bs',"--batch-size", type=int, default=200, help="Batch size")
+    parser.add_argument("-lr", "--learning-rate", type=float, default=5e-4, help="Adam's learning rate")
     parser.add_argument("-tbs", "--test-batch-size", type = int, default = 5000, help="Batch size on test set")
     parser.add_argument("-weik", "--eikonal-weight", type = float, default=0., help="weight for eikonal loss")
     parser.add_argument("-wtv", "--total-variation-weight", type = float, default=0., help="weight for total variation loss")
@@ -48,7 +49,7 @@ if __name__ == "__main__":
         eikonal_weight = args.eikonal_weight,
         tv_weight = args.total_variation_weight,
         optimizer = "adam",
-        learning_rate = 5e-4,
+        learning_rate = args.learning_rate,
         output_folder = os.path.join("output", args.output_name if len(args.output_name)>0 else args.dataset)
     )
     os.makedirs(config.output_folder, exist_ok=True)
@@ -77,6 +78,7 @@ if __name__ == "__main__":
     DIM = X_train.shape[1] # dimension of the dataset (2 or 3)
 
     #### Create model and setup trainer
+    # model = select_model(args.model, DIM, args.n_layers, args.n_hidden).to(config.device)
     model = select_model(args.model, DIM, args.n_layers, args.n_hidden, final_activ=torch.nn.Tanh).to(config.device)
     print("MODEL", model)
     print("PARAMETERS:", count_parameters(model))
@@ -89,6 +91,9 @@ if __name__ == "__main__":
         if DIM==2:
             plot_domain = get_BB(X_train, DIM, pad=0.5)
             callbacks.append(Render2DCB(config.output_folder, config.checkpoint_freq, plot_domain, res=1000))
+        else:
+            plot_domain = M.geometry.BB3D(-1,-1,-1,1,1,1)
+            callbacks.append(MarchingCubeCB(config.output_folder, config.checkpoint_freq, plot_domain, res=100, iso=0))
 
     trainer.add_callbacks(*callbacks)
     trainer.train_full_info(model)
