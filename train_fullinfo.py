@@ -78,8 +78,8 @@ if __name__ == "__main__":
     DIM = X_train.shape[1] # dimension of the dataset (2 or 3)
 
     #### Create model and setup trainer
-    # model = select_model(args.model, DIM, args.n_layers, args.n_hidden).to(config.device)
-    model = select_model(args.model, DIM, args.n_layers, args.n_hidden, final_activ=torch.nn.Tanh).to(config.device)
+    model = select_model(args.model, DIM, args.n_layers, args.n_hidden).to(config.device)
+    # model = select_model(args.model, DIM, args.n_layers, args.n_hidden, final_activ=torch.nn.Tanh).to(config.device)
     print("MODEL", model)
     print("PARAMETERS:", count_parameters(model))
 

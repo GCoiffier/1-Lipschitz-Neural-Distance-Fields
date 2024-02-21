@@ -31,7 +31,8 @@ class Trainer(M.Logger):
     
     def get_scheduler(self):
         if self.optimizer is None : return None
-        return torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, factor=0.5, patience=10)
+        return torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=100, eta_min=1e-6)
+        # return torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, factor=0.5, patience=10)
 
     def add_callbacks(self, *args):
         for cb in args:
@@ -110,7 +111,7 @@ class Trainer(M.Logger):
 
                 ### Eikonal loss
                 if self.config.eikonal_weight>0.:
-                    x_rdm = 2*torch.rand_like(X_in)-1 # between -1 and 1
+                    x_rdm = 2*torch.rand_like(X_in[0])-1 # between -1 and 1
                     x_rdm.requires_grad = True
                     y_rdm = model(x_rdm)
                     batch_grad = torch.autograd.grad(y_rdm, x_rdm, grad_outputs=torch.ones_like(y_rdm), create_graph=True)[0]
@@ -125,7 +126,8 @@ class Trainer(M.Logger):
                     x_rdm.requires_grad = True
                     y_rdm = model(x_rdm)
                     batch_grad = torch.autograd.grad(y_rdm, x_rdm, grad_outputs=torch.ones_like(y_rdm), create_graph=True)[0]
-                    batch_loss_gnorm = -self.config.gnorm_weight * torch.sum(batch_grad.norm(dim=1))
+                    # batch_loss_gnorm = -self.config.gnorm_weight * torch.sum(batch_grad.norm(dim=1))
+                    batch_loss_gnorm = self.config.gnorm_weight * (1-torch.sum(batch_grad * batch_grad))
                     total_batch_loss += batch_loss_gnorm
                     train_loss["gnorm"] += float(batch_loss_gnorm.detach()) 
 
@@ -183,7 +185,6 @@ class Trainer(M.Logger):
             train_loss["fit"] = 0.
             if self.config.eikonal_weight >0. :
                 train_loss["eik"] = 0.
-                ones = torch.ones(self.config.batch_size).to(self.config.device)
             if self.config.tv_weight >0. :
                 train_loss["tv"] = 0.
 
@@ -206,7 +207,8 @@ class Trainer(M.Logger):
                     y_rdm = model(x_rdm)
                     batch_grad = torch.autograd.grad(y_rdm, x_rdm, grad_outputs=torch.ones_like(y_rdm), create_graph=True)[0]
                     # batch_loss_eik = self.config.eikonal_weight * F.mse_loss(torch.sum(batch_grad*batch_grad, axis=-1), ones)
-                    batch_loss_eik = self.config.eikonal_weight * F.mse_loss(batch_grad.norm(dim=1), ones)
+                    batch_grad_norm = batch_grad.norm(dim=-1)
+                    batch_loss_eik = self.config.eikonal_weight * F.mse_loss(batch_grad_norm, torch.ones_like(batch_grad_norm))
                     total_batch_loss += batch_loss_eik
                     train_loss["eik"] += float(batch_loss_eik.detach())
 

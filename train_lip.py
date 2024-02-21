@@ -33,6 +33,7 @@ if __name__ == "__main__":
     parser.add_argument("-ne", "--epochs", type=int, default=200, help="Number of epochs")
     parser.add_argument('-bs',"--batch-size", type=int, default=200, help="Batch size")
     parser.add_argument("-tbs", "--test-batch-size", type = int, default = 5000, help="Batch size on test set")
+    parser.add_argument("-lr", "--learning-rate", type=float, default=5e-4, help="Adam's learning rate")
     parser.add_argument("-lm", "--loss-margin", type=float, default=1e-2)
     parser.add_argument("-lmbd", "--loss-lambda", type=float, default=100.)
     
@@ -61,7 +62,7 @@ if __name__ == "__main__":
         eikonal_weight = args.eikonal_weight,
         gnorm_weight = args.gnorm_weight,
         optimizer = "adam",
-        learning_rate = 5e-4,
+        learning_rate = args.learning_rate,
         output_folder = os.path.join("output", args.output_name if len(args.output_name)>0 else args.dataset)
     )
     os.makedirs(config.output_folder, exist_ok=True)

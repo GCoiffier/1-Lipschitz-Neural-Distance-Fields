@@ -7,6 +7,8 @@ from torch.utils.data import TensorDataset, DataLoader
 from tqdm import tqdm
 from skimage.measure import marching_cubes
 
+from .utils import forward_in_batches
+
 def point_cloud_from_array(X, D=None):
     pc = M.mesh.PointCloud()
     if X.shape[1]==2:
@@ -45,30 +47,19 @@ def point_cloud_from_arrays(*args) -> M.mesh.PointCloud:
 
 def render_sdf_2d(render_path, contour_path, gradient_path, model, domain : M.geometry.BB2D, device, res=800, batch_size=1000):
     
-    with_grad = (gradient_path is not None)
-
     X = np.linspace(domain.left, domain.right, res)
     resY = round(res * domain.height/domain.width)
     Y = np.linspace(domain.bottom, domain.top, resY)
 
     pts = np.hstack((np.meshgrid(X,Y))).swapaxes(0,1).reshape(2,-1).T
-    pts = torch.Tensor(pts).to(device)
-    pts = DataLoader(TensorDataset(pts), batch_size=batch_size)
+    if gradient_path is not None:
+        dist_values,grad_values = forward_in_batches(
+            model, pts, device, 
+            compute_grad=True, batch_size=batch_size)
+    else:
+        dist_values = forward_in_batches(model, pts, device, compute_grad=False, batch_size=batch_size)
 
-
-    dist_values = []
-    grad_norms = []
-
-    print()
-    for (batch,) in tqdm(pts, total=len(pts)):
-        batch.requires_grad = with_grad
-        y = model(batch).cpu()
-        dist_values.append(y.detach().cpu().numpy())
-        if with_grad:
-            y = torch.sum(model(batch))
-            y.backward()
-            grad_norm = torch.norm(batch.grad, dim=1)
-            grad_norms.append(grad_norm.detach().cpu().numpy())
+    grad_norms = np.linalg.norm(grad_values,axis=1)
         
     img = np.concatenate(dist_values).reshape((res,resY)).T
     img = img[::-1,:]
@@ -95,7 +86,7 @@ def render_sdf_2d(render_path, contour_path, gradient_path, model, domain : M.ge
         plt.savefig(contour_path, bbox_inches='tight', pad_inches=0)
 
     if gradient_path is not None:
-        grad_img = np.concatenate(grad_norms).reshape((res,resY)).T
+        grad_img = grad_norms.reshape((res,resY)).T
         grad_img = grad_img[::-1,:]
         print("GRAD NORM INTERVAL", (np.min(grad_img), np.max(grad_img)))
 
@@ -124,16 +115,7 @@ def reconstruct_surface_marching_cubes(model, domain, device, iso=0, res=100, ba
     ### Feed grid to model
     L = [np.linspace(domain.min_coords[i], domain.max_coords[i], res) for i in range(3)]
     pts = np.hstack((np.meshgrid(*L))).swapaxes(0,1).reshape(3,-1).T
-    pts = torch.Tensor(pts).to(device)
-    pts = DataLoader(TensorDataset(pts), batch_size=batch_size)
-    dist_values = []
-
-    for (batch,) in tqdm(pts, total=len(pts)):
-        batch.requires_grad = False
-        v_batch = model(batch).cpu()
-        dist_values.append(v_batch.detach().cpu().numpy())
-
-    dist_values = np.concatenate(dist_values)
+    dist_values = forward_in_batches(model, pts, device, compute_grad=False, batch_size=batch_size)
     dist_values = dist_values.reshape((res,res,res))
 
     ### Call marching cubes
