@@ -32,7 +32,6 @@ class Trainer(M.Logger):
     def get_scheduler(self):
         if self.optimizer is None : return None
         return torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=100, eta_min=1e-6)
-        # return torch.optim.lr_scheduler.ReduceLROnPlateau(self.optimizer, factor=0.5, patience=10)
 
     def add_callbacks(self, *args):
         for cb in args:
