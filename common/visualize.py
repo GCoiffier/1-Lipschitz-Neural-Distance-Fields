@@ -59,8 +59,6 @@ def render_sdf_2d(render_path, contour_path, gradient_path, model, domain : M.ge
     else:
         dist_values = forward_in_batches(model, pts, device, compute_grad=False, batch_size=batch_size)
 
-    grad_norms = np.linalg.norm(grad_values,axis=1)
-        
     img = np.concatenate(dist_values).reshape((res,resY)).T
     img = img[::-1,:]
 
@@ -79,13 +77,17 @@ def render_sdf_2d(render_path, contour_path, gradient_path, model, domain : M.ge
 
     if contour_path is not None:
         plt.clf()
-        cs = plt.contourf(X,-Y,img, levels=[-0.01, 0., 0.01], extend="both")
-        # cs.cmap.set_over('red')
-        # cs.cmap.set_under('blue')
-        cs.changed()
-        plt.savefig(contour_path, bbox_inches='tight', pad_inches=0)
+        norm = colors.TwoSlopeNorm(vmin=vmin, vmax=vmax, vcenter=0)
+        plt.imshow(img, cmap="bwr", norm=norm)
+        plt.axis("off")
+        # cs = plt.contourf(X,-Y,img, levels=np.linspace(-0.1,0.1,11), cmap="seismic", extend="both")
+        # cs.changed()
+        plt.contour(img, levels=16, colors='k', linestyles="solid", linewidths=0.3)
+        plt.contour(img, levels=[0.], colors='k', linestyles="solid", linewidths=0.6)
+        plt.savefig(contour_path, bbox_inches='tight', pad_inches=0, dpi=200)
 
     if gradient_path is not None:
+        grad_norms = np.linalg.norm(grad_values,axis=1)
         grad_img = grad_norms.reshape((res,resY)).T
         grad_img = grad_img[::-1,:]
         print("GRAD NORM INTERVAL", (np.min(grad_img), np.max(grad_img)))
