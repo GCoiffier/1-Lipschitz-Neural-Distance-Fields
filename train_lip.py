@@ -158,12 +158,14 @@ if __name__ == "__main__":
     callbacks.append(LoggerCB(os.path.join(config.output_folder, "log.csv")))
     if config.checkpoint_freq>0:
         callbacks.append(CheckpointCB([x for x in range(0, config.n_epochs, config.checkpoint_freq) if x>0]))
+        plot_domain = get_BB(X_train_on, DIM, pad=0.5)
         if DIM==2:
-            plot_domain = get_BB(X_train_on, DIM, pad=0.5) if config.signed else get_BB(X_train_on, DIM, pad=0.5)
             callbacks.append(Render2DCB(config.output_folder, config.checkpoint_freq, plot_domain, res=500))
+        else:
+            callbacks.append(MarchingCubeCB(config.output_folder, config.checkpoint_freq, plot_domain, res=100, iso=0))
     # callbacks.append(ComputeSingularValuesCB(config.checkpoint_freq))
-    if config.signed : 
-        callbacks.append(UpdateHkrRegulCB({1 : 1., 10 : 10., 20: 100., 30: config.loss_regul}))
+    # if config.signed : 
+    #     callbacks.append(UpdateHkrRegulCB({1 : 1., 10 : 10., 20: 100., 30: config.loss_regul}))
     
     if config.signed:
         trainer = Trainer((loader_in, loader_out, loader_bd), test_loader, config)

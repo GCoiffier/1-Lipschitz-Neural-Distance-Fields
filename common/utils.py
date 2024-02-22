@@ -42,7 +42,7 @@ def forward_in_batches(model, inputs : np.ndarray, device:str, compute_grad:bool
         v_batch = model(batch)
         if compute_grad:
             torch.sum(v_batch).backward()
-            grads.append(batch.grad)
+            grads.append(batch.grad.detach().cpu().numpy())
         outputs.append(v_batch.detach().cpu().numpy())
     
     if compute_grad:
