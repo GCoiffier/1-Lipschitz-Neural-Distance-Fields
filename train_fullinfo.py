@@ -89,7 +89,7 @@ if __name__ == "__main__":
     if config.checkpoint_freq>0:
         callbacks.append(CheckpointCB([x for x in range(0, config.n_epochs, config.checkpoint_freq) if x>0]))
         if DIM==2:
-            plot_domain = get_BB(X_train, DIM, pad=0.5)
+            plot_domain = get_BB(X_train, DIM)
             callbacks.append(Render2DCB(config.output_folder, config.checkpoint_freq, plot_domain, res=1000))
         else:
             plot_domain = M.geometry.BB3D(-1,-1,-1,1,1,1)

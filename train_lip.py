@@ -37,6 +37,7 @@ if __name__ == "__main__":
     parser.add_argument("-lm", "--loss-margin", type=float, default=1e-2)
     parser.add_argument("-lmbd", "--loss-lambda", type=float, default=100.)
     
+    parser.add_argument("-whkr", "--hkr-weight", type=float, default=1., help='weight for hKR loss')
     parser.add_argument("-wa", "--attach-weight", type=float, default=0., help="weight for fitting loss. Has no effect if --unsigned")
     parser.add_argument("-wn", "--normal-weight", type=float, default=0., help="weigt for normal reconstruction loss. Has no effect if --unsigned")
     parser.add_argument("-weik", "--eikonal-weight", type = float, default=0., help="weight for eikonal loss")
@@ -57,6 +58,7 @@ if __name__ == "__main__":
         test_batch_size = args.test_batch_size,
         loss_margin = args.loss_margin,
         loss_regul = args.loss_lambda,
+        hkr_weight = args.hkr_weight,
         attach_weight = args.attach_weight,
         normal_weight = args.normal_weight,
         eikonal_weight = args.eikonal_weight,

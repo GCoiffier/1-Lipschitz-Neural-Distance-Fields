@@ -17,7 +17,12 @@ python train_fullinfo.py hand_laurent -ne 1000 -cp 100 --model siren --n-layers 
 python reconstruct_surface.py output/hand_laurent_siren_eik/model_final.pt -res 200 -d -0.02 -0.01 0. 0.01 0.02 -o hand_laurent_siren_eik
 mv output/*.obj output/hand_laurent_siren_eik/
 
-# Run signed lipschitz 
+# Run signed lipschitz with full info
+python train_fullinfo.py hand_laurent -ne 1000 -cp 50 --model sll --n-layers 20 --n-hidden 128 -bs 100 -lm 1e-3 -o hand_laurent_sll
+python reconstruct_surface.py output/hand_laurent_lip_sll/model_final.pt -res 200 -d -0.02 -0.01 0. 0.01 0.02 -o hand_laurent_sll
+mv output/*.obj output/hand_laurent_lip_sll/
+
+# Run signed lipschitz with HKR
 python extract_dataset_surface.py /home/guillaume/Desktop/neuralSDF_inputs/hand_laurent.obj -mode signed -no 50000 -ni 10000 -nt 10000
 
 python train_lip.py hand_laurent -ne 500 -cp 50 --model ortho --n-layers 20 --n-hidden 128 -bs 1000 -lm 1e-3 -o hand_laurent_lip_ortho

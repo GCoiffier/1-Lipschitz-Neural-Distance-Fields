@@ -14,9 +14,10 @@ class LossHKR:
             y: vector of predictions.
         """
         return  F.relu(self.margin - y) + (1./self.lbda) * torch.mean(-y)
+        # return torch.mean(-y)
     
 def vector_alignment_loss(y, target):
-    return (1-F.cosine_similarity(y, target, dim = 1)).mean()
+    return (1-F.cosine_similarity(y, target, dim = 1)*2).mean()
 
 class SALLoss:
     """SAL: Sign Agnostic Learning of Shapes from Raw Data"""
