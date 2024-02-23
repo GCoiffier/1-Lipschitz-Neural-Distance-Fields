@@ -9,7 +9,7 @@ from common.visualize import point_cloud_from_array, point_cloud_from_arrays, ve
 def extract_train_point_cloud(n_surf, n_train, mesh, domain):
     X_bd, N_bd = M.processing.sampling.sample_points_from_surface(mesh, n_surf, return_normals=True)
     domain.pad(0.05,0.05,0.05)
-    X_other1 = M.processing.sampling.sample_bounding_box_3D(domain, 50*n_train)
+    X_other1 = M.processing.sampling.sample_bounding_box_3D(domain, 200*n_train)
     domain.pad(0.95,0.95,0.95)
     X_other2 = M.processing.sampling.sample_bounding_box_3D(domain, 5*n_train)
     X_other = np.concatenate((X_other1, X_other2))
