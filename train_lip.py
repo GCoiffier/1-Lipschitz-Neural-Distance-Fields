@@ -25,7 +25,7 @@ if __name__ == "__main__":
     parser.add_argument("--unsigned", action="store_true")
 
     # model parameters
-    parser.add_argument("-model","--model", choices=["ortho", "sll"], default="ortho")
+    parser.add_argument("-model","--model", choices=["ortho", "sll"], default="sll")
     parser.add_argument("-n-layers", "--n-layers", type=int, default=8)
     parser.add_argument("-n-hidden", "--n-hidden", type=int, default=32)
 

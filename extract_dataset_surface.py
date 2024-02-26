@@ -74,7 +74,20 @@ if __name__ == "__main__":
     match args.mode:
 
         case "unsigned":
-            X_on, X_out = extract_train_point_cloud_unsigned(args.n_train, mesh, domain)
+            if args.importance_sampling:
+                X_out1 = M.processing.sampling.sample_bounding_box_3D(domain, 10*args.n_train)
+                Y_out1 = fast_winding_number_for_meshes(np.array(mesh.vertices), np.array(mesh.faces, dtype=np.int32), X_out1)
+                mask = np.logical_and(Y_out1 > 0.2, Y_out1 < 0.3)
+                X_out1 = X_out1[mask, :]
+                X_on, X_out2 = extract_train_point_cloud_unsigned(args.n_train, mesh, domain)
+                print(X_out1.shape)
+                np.random.shuffle(X_out2)
+                X_out = np.concatenate((X_out1, X_out2))
+                X_out = X_out[:args.n_train,:]
+                if args.visu: mesh_to_save["wn"] = point_cloud_from_array(X_out1,Y_out1)
+            else:
+                X_on, X_out = extract_train_point_cloud_unsigned(args.n_train, mesh, domain)
+            
             arrays_to_save = {"Xtrain_on" : X_on, "Xtrain_out" : X_out}
             if args.visu:
                 mesh_to_save["pts_on"] = point_cloud_from_array(X_on)
