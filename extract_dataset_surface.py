@@ -50,7 +50,7 @@ if __name__ == "__main__":
 
     parser.add_argument("input_mesh", type=str, \
         help="path to the input mesh")
-    parser.add_argument("-mode", "--mode", default="signed", choices=["signed", "unsigned", "dist"])
+    parser.add_argument("-mode", "--mode", default="signed", choices=["signed", "unsigned", "dist", "sal"])
     parser.add_argument("-no", "--n-train", type=int, default=100_000)
     parser.add_argument("-ni", "--n-boundary", type=int, default=10_000)
     parser.add_argument("-nt", "--n-test",  type=int, default=10_000)
@@ -106,6 +106,19 @@ if __name__ == "__main__":
             if args.visu:
                 mesh_to_save["pts_train"] = point_cloud_from_array(X_train,Y_train)
 
+        case "sal":
+            X_on,Nrml = M.sampling.sample_points_from_surface(mesh, args.n_boundary, return_normals=True)
+            X_train, Y_train = extract_train_point_cloud_distances(100, args.n_train, mesh, domain)
+            arrays_to_save = {
+                "Xtrain_out" : X_train,
+                "Ytrain_out" : Y_train,
+                "Xtrain_on" : X_on,
+                "Nrml" : Nrml}
+            if args.visu:
+                mesh_to_save["pts_train"] = point_cloud_from_array(X_train, Y_train)
+                mesh_to_save["pts_on"] = point_cloud_from_array(X_on)
+                mesh_to_save["normals"] = vector_field_from_array(X_on, Nrml, 0.1)
+
     print("\nGenerate test set")
     print(" | Sampling points on surface")
     X_surf_test = M.processing.sampling.sample_points_from_surface(mesh, args.n_test_boundary)
@@ -116,7 +129,7 @@ if __name__ == "__main__":
     
     print(" | Compute distances")
     Y_test,_,_ = signed_distance(X_other_test, np.array(mesh.vertices), np.array(mesh.faces, dtype=np.int32))
-    if args.mode == "unsigned":
+    if args.mode in ("unsigned", "SAL"):
         Y_test = abs(Y_test)
     X_test = np.concatenate((X_surf_test, X_other_test))
     Y_test = np.concatenate((np.zeros(X_surf_test.shape[0]), Y_test))

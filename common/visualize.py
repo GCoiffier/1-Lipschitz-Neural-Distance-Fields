@@ -93,7 +93,8 @@ def render_sdf_2d(render_path, contour_path, gradient_path, model, domain : M.ge
         print("GRAD NORM INTERVAL", (np.min(grad_img), np.max(grad_img)))
 
         plt.clf()
-        pos = plt.imshow(grad_img, vmin=0, vmax=2, cmap="seismic")
+        pos = plt.imshow(grad_img, vmin=0.5, vmax=1.5, cmap="bwr")
+        plt.contour(img, levels=[0.], colors='k', linestyles="solid", linewidths=0.6)
         plt.axis("off")
         plt.colorbar(pos)
         plt.savefig(gradient_path, bbox_inches='tight', pad_inches=0)

@@ -7,5 +7,5 @@ model = load_model(sys.argv[1], "cpu")
 
 render_sdf_2d(
     None, "contours.png", "gradient.png",
-    model, M.geometry.BB2D(-1,-1,1,1), "cpu", 1000, batch_size=10_000
+    model, M.geometry.BB2D(-1,-1,1,1), "cpu", 2000, batch_size=1000
 )

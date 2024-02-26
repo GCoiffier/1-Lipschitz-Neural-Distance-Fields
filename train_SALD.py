@@ -28,16 +28,18 @@ if __name__ == "__main__":
     parser.add_argument("-o", "--output-name", type=str, default="")
 
     # model parameters
+    parser.add_argument("-model", "--model", choices=["mlp", "siren", "ortho", "sll"], default="mlp")
     parser.add_argument("-n-layers", "--n-layers", type=int, default=8)
     parser.add_argument("-n-hidden", "--n-hidden", type=int, default=32)
 
     # optimization parameters
     parser.add_argument("-ne", "--epochs", type=int, default=200, help="Number of epochs")
-    parser.add_argument('-bs',"--batch-size", type=int, default=200, help="Batch size")
+    parser.add_argument('-bs',"--batch-size", type=int, default=100, help="Batch size")
     parser.add_argument("-tbs", "--test-batch-size", type = int, default = 5000, help="Batch size on test set")
     parser.add_argument("--metric", choices=["l0", "l2"], default="l2")
 
-    parser.add_argument("-wa", "--attach-weight", type=float, default=0., help="weight for fitting loss. Has no effect if --unsigned")
+    parser.add_argument("-wa", "--attach-weight", type=float, default=0.)
+    parser.add_argument("-wg", "--grad-weight", type=float, default=0.1)
     
     # misc
     parser.add_argument("-cp", "--checkpoint-freq", type=int, default=10)
@@ -53,6 +55,7 @@ if __name__ == "__main__":
         test_batch_size = args.test_batch_size,
         metric = args.metric,
         attach_weight = args.attach_weight,
+        grad_weight = args.grad_weight,
         optimizer = "adam",
         learning_rate = 5e-4,
         output_folder = os.path.join("output", args.output_name if len(args.output_name)>0 else args.dataset)
@@ -71,8 +74,10 @@ if __name__ == "__main__":
     
     X_train_on = np.load(os.path.join("inputs", f"{args.dataset}_Xtrain_on.npy"))
     X_train_on = torch.Tensor(X_train_on).to(config.device)
+    Normals = np.load(os.path.join("inputs", f"{args.dataset}_Nrml.npy"))
+    Normals = torch.Tensor(Normals).to(config.device)
     ratio = X_train_out.shape[0]//X_train_on.shape[0]
-    train_loader_on = DataLoader(X_train_on, batch_size=config.batch_size//ratio, shuffle=True)
+    train_loader_on = DataLoader(TensorDataset(X_train_on,Normals), batch_size=config.batch_size//ratio, shuffle=True)
 
     print(f"Succesfully loaded train set:\n", 
           f" Outside: {X_train_out.shape}\n",
@@ -94,9 +99,9 @@ if __name__ == "__main__":
     DIM = X_train_out.shape[ 1] # dimension of the dataset (2 or 3)
 
     #### Create model
-    # model = MultiLayerPerceptronSkips(DIM, args.n_hidden, args.n_layers, skips=[args.n_layers//2]).to(config.device)
-    # model = MultiLayerPerceptronSkips(DIM, args.n_hidden, args.n_layers, skips=[]).to(config.device)
-    model = MultiLayerPerceptron(DIM, args.n_hidden, args.n_layers).to(config.device)
+    model = select_model(
+        args.model, DIM, args.n_layers, args.n_hidden
+        ).to(config.device)
     print("PARAMETERS:", count_parameters(model))
 
     M.mesh.save(
@@ -110,11 +115,15 @@ if __name__ == "__main__":
     callbacks = []
     callbacks.append(LoggerCB(os.path.join(config.output_folder, "log.csv")))
     callbacks.append(CheckpointCB([x for x in range(0, config.n_epochs, config.checkpoint_freq) if x>0]))
+    plot_domain = get_BB(X_train_on, DIM, pad=0.2)
     if DIM==2:
-        plot_domain = get_BB(X_train_out, DIM, pad=0.5)
         callbacks.append(Render2DCB(config.output_folder, config.checkpoint_freq, plot_domain, output_gradient_norm=False, res=800))
-    # callbacks.append(ComputeSingularValuesCB(config.checkpoint_freq))
-    
+    else:
+        callbacks.append(MarchingCubeCB(config.output_folder, config.checkpoint_freq, plot_domain))
     trainer = Trainer((train_loader_out, train_loader_on), test_loader, config)
     trainer.add_callbacks(*callbacks)
     trainer.train_sal(model)
+
+    #### Save final model
+    path = os.path.join(config.output_folder, "model_final.pt")
+    save_model(model, path)

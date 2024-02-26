@@ -116,7 +116,7 @@ if __name__ == "__main__":
                 mesh_to_save["pts_train"] = point_cloud_from_array(X_train, Y_train)
 
         case "sal":
-            X_on, _ = sample_points_and_normals(mesh, args.n_boundary)
+            X_on, Nrml = sample_points_and_normals(mesh, args.n_boundary)
             X, _ = sample_points_and_normals(mesh, args.n_train//2)
             Z1 = X + np.random.normal(0., 1e-2, size = (args.n_train//2, 2))
             Z2 = X + np.random.normal(0., 0.2, size = (args.n_train//2, 2))
@@ -125,10 +125,12 @@ if __name__ == "__main__":
             Y = abs(Y)
             arrays_to_save["Xtrain_out"] = Z
             arrays_to_save["Xtrain_on"] = X_on 
+            arrays_to_save["Nrml"] = Nrml
             arrays_to_save["Ytrain_out"] = Y
             if args.visu:
                 mesh_to_save["X_train"] = point_cloud_from_array(Z,Y)
                 mesh_to_save["X_on"] = point_cloud_from_array(X_on)
+                mesh_to_save["normals"] = vector_field_from_array(X_on,Nrml,0.1)
 
     print("Generate test set")
     args.n_test_boundary = min(args.n_test_boundary, args.n_boundary)

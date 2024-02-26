@@ -37,3 +37,16 @@ class SALLoss:
     
     def SAL_l0(self,y_pred,y_target):
         return torch.mean(torch.abs(torch.abs(y_pred) - 1)**self.l)
+    
+
+class SALDLoss:
+    """
+    SALD: Sign Agnostic Learning with Derivatives
+    
+    Improving SAL using losses on gradients
+    """
+    def __init__(self):
+        pass
+
+    def __call__(self,y_pred,y_target):
+        return torch.min( torch.norm(y_pred-y_target), torch.norm(y_pred+y_target))
