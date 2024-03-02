@@ -29,7 +29,7 @@ if __name__ == "__main__":
     if len(args.output_name)==0:
         args.output_name = args.model.split("/")[-1].split(".pt")[0]
     if args.range: 
-        args.isovalues = np.linspace(-0.2,0.2,51)
+        args.isovalues = np.linspace(-0.1,0.1,41)
 
     # sdf = load_model(args.model, device).vanilla_export().to(device)
     sdf = load_model(args.model, device).to(device)

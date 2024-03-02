@@ -31,7 +31,7 @@ class Trainer(M.Logger):
     
     def get_scheduler(self):
         if self.optimizer is None : return None
-        return torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=100, eta_min=1e-6)
+        return torch.optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=50, eta_min=1e-6)
 
     def add_callbacks(self, *args):
         for cb in args:
@@ -136,10 +136,8 @@ class Trainer(M.Logger):
                 self.optimizer.step() 
                 for cb in self.callbacks:
                     cb.callOnEndForward(self, model)
-            
             if self.scheduler is not None:
                 self.scheduler.step()
-
             self.metrics["train_loss"] = train_loss
             self.metrics["epoch_time"] = time.time() - t0
             for cb in self.callbacks:
@@ -176,7 +174,8 @@ class Trainer(M.Logger):
             self.evaluate_model(model)
 
     def train_full_info(self, model):
-        self.optimizer = self.get_optimizer(model)   
+        self.optimizer = self.get_optimizer(model)
+        # self.scheduler = self.get_scheduler()   
         for epoch in range(self.config.n_epochs):  # loop over the dataset multiple times
             self.metrics["epoch"] = epoch+1
             for cb in self.callbacks:
@@ -217,6 +216,8 @@ class Trainer(M.Logger):
                 self.optimizer.step()
                 for cb in self.callbacks:
                     cb.callOnEndForward(self, model)
+            if self.scheduler is not None:
+                self.scheduler.step()
             self.metrics["train_loss"] = train_loss
             self.metrics["epoch_time"] = time.time() - t0
             for cb in self.callbacks:
