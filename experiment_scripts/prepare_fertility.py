@@ -2,7 +2,7 @@ import mouette as M
 import numpy as np
 from scipy.spatial import KDTree
 
-fertility = M.mesh.load("/home/guillaume/mesh/neuralSDF_inputs/fertility.obj")
+fertility = M.mesh.load("/home/guillaume/Desktop/neuralSDF_inputs/input_mesh_signed/fertility.obj")
 
 fertility = M.transform.fit_into_unit_cube(fertility)
 fertility = M.transform.translate_to_origin(fertility)
@@ -25,7 +25,7 @@ for k in range(30):
     while True:
         random_v = np.random.randint(0, 5000)
         if to_keep[random_v] : break
-    dist_nn, ind_nn = tree.query(pts_ablated[random_v], 50)
+    dist_nn, ind_nn = tree.query(pts_ablated[random_v], 41)
     to_keep[ind_nn] = False
 
 pts_ablated_visu = M.mesh.from_arrays(pts_ablated)

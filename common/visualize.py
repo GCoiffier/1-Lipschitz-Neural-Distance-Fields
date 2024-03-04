@@ -138,4 +138,16 @@ def reconstruct_surface_marching_cubes(model, domain, device, iso=0, res=100, ba
             to_save[(ioff, off)] = m
         except ValueError:
             continue
+    
+    ### Reproject meshes to correct coordinates
+    for key,mesh in to_save.items():
+        for v in mesh.id_vertices:
+            pV = M.Vec(mesh.vertices[v])
+            ix, iy, iz = int(pV.x), int(pV.y), int(pV.z)
+            dx, dy, dz = pV.x%1, pV.y%1, pV.z%1
+            vx = (1-dx)*L[0][ix] + dx * L[0][ix+1]
+            vy = (1-dy)*L[1][iy] + dy * L[1][iy+1]
+            vz = (1-dz)*L[2][iz] + dz * L[2][iz+1]
+            mesh.vertices[v] = M.Vec(vx,vy,vz)
+        to_save[key] = mesh
     return to_save
