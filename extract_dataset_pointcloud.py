@@ -14,7 +14,7 @@ from common.visualize import point_cloud_from_array, point_cloud_from_arrays, ve
 def extract_train_point_cloud(n_pts, V,N,A, domain, t_in=0., t_out=0.):
     t_in = max(0., t_in)
     domain.pad(0.05,0.05,0.05)
-    X_1 = M.sampling.sample_bounding_box_3D(domain, 10*args.n_train)
+    X_1 = M.sampling.sample_bounding_box_3D(domain, 20*args.n_train)
     domain.pad(0.95,0.95,0.95)
     X_2 = M.sampling.sample_bounding_box_3D(domain, args.n_train//2)
     X_other = np.concatenate((X_1, X_2))
