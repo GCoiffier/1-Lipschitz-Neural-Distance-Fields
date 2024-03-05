@@ -15,7 +15,7 @@ M.mesh.save(pts_sparse, "inputs/fertility_sparse.geogram_ascii")
 
 pts_noisy = M.sampling.sample_points_from_surface(fertility, 5000, return_point_cloud=True, return_normals=True)
 for v in pts_noisy.id_vertices:
-    pts_noisy.vertices[v] = M.Vec(pts_noisy.vertices[v]) + np.random.normal(0., 5e-2, size=3)
+    pts_noisy.vertices[v] = M.Vec(pts_noisy.vertices[v]) + np.random.normal(0., 3e-2, size=3)
 M.mesh.save(pts_noisy, "inputs/fertility_noisy.geogram_ascii")
 
 pts_ablated, normals_ablated = M.sampling.sample_points_from_surface(fertility, 5000, return_normals=True)
