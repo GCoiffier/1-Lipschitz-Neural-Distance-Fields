@@ -94,9 +94,22 @@ if __name__ == "__main__":
                 mesh_to_save["pts_train"] = point_cloud_from_arrays((X_on,-1), (X_out, 1.))
 
         case "signed":
-            X_on, N, X_in, X_out = extract_train_point_cloud(args.n_boundary, args.n_train, mesh, domain)
-            # X_in = np.concatenate((X_on,X_in))[:X_out.shape[0],:]
-
+            if args.importance_sampling:          
+                BETA = 30
+                X_on, N = M.processing.sampling.sample_points_from_surface(mesh, args.n_boundary, return_normals=True)
+                X_u, Y_u = extract_train_point_cloud_distances(10, 20*args.n_train, mesh, domain)            
+                weight = np.exp(-BETA*abs(Y_u))
+                weight /= np.sum(weight)
+                sampled = np.random.choice(X_u.shape[0],size=5*args.n_train,replace=False,p=weight)
+                X_train = np.concatenate((X_u[sampled],X_on))
+                Y = np.concatenate((Y_u[sampled], np.zeros(args.n_boundary)))
+                X_in = X_train[Y<=0][:args.n_train]
+                X_out = X_train[Y>0][:args.n_train]
+                print(f"Generated: on {X_on.shape[0]}, out {X_out.shape[0]}, in {X_in.shape[0]}")
+            else:
+                X_on, N, X_in, X_out = extract_train_point_cloud(args.n_boundary, args.n_train, mesh, domain)
+                # X_in = np.concatenate((X_on,X_in))[:X_out.shape[0],:]
+            
             arrays_to_save = { "Xtrain_on" : X_on, "Xtrain_in" : X_in, "Xtrain_out" : X_out, "Nrml" : N}
             if args.visu:
                 mesh_to_save["pts_train"] = point_cloud_from_arrays((X_in,-1),(X_out,1),(X_on,0))
