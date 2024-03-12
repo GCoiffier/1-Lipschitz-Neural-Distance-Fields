@@ -29,7 +29,7 @@ if __name__ == "__main__":
         args.output_name = args.model.split("/")[-1].split(".pt")[0]
     if args.range: args.offset = np.linspace(-0.1,0.1,31)
 
-    sdf = load_model(args.model, device).to(device)
+    sdf = load_model(args.model, device)
 
     domain = M.geometry.BB2D(-1, -1, 1, 1)
     resX = args.resolution

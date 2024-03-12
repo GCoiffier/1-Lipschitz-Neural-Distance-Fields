@@ -27,7 +27,7 @@ def load_model(path, device:str):
     else:
         raise Exception(f"Model type {model_type} not recognized")
     model.load_state_dict(data["state_dict"])
-    return model
+    return model.to(device)
 
 def select_model(name, DIM, n_layers, n_hidden, **kwargs):
     match name.lower():
