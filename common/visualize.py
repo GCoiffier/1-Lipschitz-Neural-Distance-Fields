@@ -99,6 +99,70 @@ def render_sdf_2d(render_path, contour_path, gradient_path, model, domain : M.ge
         plt.colorbar(pos)
         plt.savefig(gradient_path, bbox_inches='tight', pad_inches=0)
 
+def render_sdf_quad(render_path, contour_path, gradient_path, model, P0, P1, P2, device, res=800, batch_size=1000):
+    
+    dx = P1 - P0
+    dy = P2 - P0
+    X = np.linspace(0,1, res)
+    resY = round(res * M.geometry.norm(dy)/M.geometry.norm(dx))
+    Y = np.linspace(0,1, resY)
+
+    pts = []
+    for ax in X:
+        for ay in Y:
+            p = P0 + ax*dx + ay*dy
+            pts.append(p)
+    pts = np.array(pts)
+    
+    if gradient_path is not None:
+        dist_values,grad_values = forward_in_batches(
+            model, pts, device, 
+            compute_grad=True, batch_size=batch_size)
+    else:
+        dist_values = forward_in_batches(model, pts, device, compute_grad=False, batch_size=batch_size)
+
+
+    img = np.concatenate(dist_values).reshape((res,resY)).T
+    img = img[::-1,:]
+
+    vmin = np.amin(img)
+    vmax = np.amax(img)
+    if vmin>0 or vmax<0:
+        vmin,vmax = -1, 1
+    print(vmin, vmax)
+
+    if render_path is not None:
+        norm = colors.TwoSlopeNorm(vmin=vmin, vmax=vmax, vcenter=0)
+        plt.clf()
+        pos = plt.imshow(img, cmap="seismic", norm=norm)
+        plt.axis('off')
+        plt.colorbar(pos)
+        plt.savefig(render_path, bbox_inches='tight', pad_inches=0)
+
+    if contour_path is not None:
+        plt.clf()
+        norm = colors.TwoSlopeNorm(vmin=vmin, vmax=vmax, vcenter=0)
+        plt.imshow(img, cmap="bwr", norm=norm)
+        plt.axis("off")
+        # cs = plt.contourf(X,-Y,img, levels=np.linspace(-0.1,0.1,11), cmap="seismic", extend="both")
+        # cs.changed()
+        plt.contour(img, levels=16, colors='k', linestyles="solid", linewidths=0.3)
+        plt.contour(img, levels=[0.], colors='k', linestyles="solid", linewidths=0.6)
+        plt.savefig(contour_path, bbox_inches='tight', pad_inches=0, dpi=200)
+
+    if gradient_path is not None:
+        grad_norms = np.linalg.norm(grad_values,axis=1)
+        grad_img = grad_norms.reshape((res,resY)).T
+        grad_img = grad_img[::-1,:]
+        print("GRAD NORM INTERVAL", (np.min(grad_img), np.max(grad_img)))
+
+        plt.clf()
+        pos = plt.imshow(grad_img, vmin=0.5, vmax=1.5, cmap="bwr")
+        plt.contour(img, levels=[0.], colors='k', linestyles="solid", linewidths=0.6)
+        plt.axis("off")
+        plt.colorbar(pos)
+        plt.savefig(gradient_path, bbox_inches='tight', pad_inches=0)
+
 
 def parameter_singular_values(model):
     layers = list(model.children())
