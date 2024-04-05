@@ -136,16 +136,19 @@ class MarchingCubeCB(Callback):
     def callOnEndTrain(self, trainer, model):
         epoch = trainer.metrics["epoch"]
         if self.freq>0 and epoch%self.freq==0:
-            iso_surfaces = reconstruct_surface_marching_cubes(
-                model, 
-                self.domain, 
-                trainer.config.device, 
-                self.iso, 
-                self.res, 
-                trainer.config.test_batch_size)
-            for (n,off),mesh in iso_surfaces.items():
-                M.mesh.save(mesh, os.path.join(self.save_folder, f"e{epoch:04d}_n{n:02d}_iso{round(1000*off)}.obj"))
-    
+            try:
+                iso_surfaces = reconstruct_surface_marching_cubes(
+                    model, 
+                    self.domain, 
+                    trainer.config.device, 
+                    self.iso, 
+                    self.res, 
+                    trainer.config.test_batch_size)
+                for (n,off),mesh in iso_surfaces.items():
+                    M.mesh.save(mesh, os.path.join(self.save_folder, f"e{epoch:04d}_n{n:02d}_iso{round(1000*off)}.obj"))
+            except:
+                
+                pass
 class UpdateHkrRegulCB(Callback):
 
     def __init__(self, when : dict):

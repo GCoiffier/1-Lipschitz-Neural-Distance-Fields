@@ -3,6 +3,7 @@ from .mlp import MultiLayerPerceptron, MultiLayerPerceptronSkips
 from .lipschitz import DenseLipNetwork
 from .sll import DenseSDP
 from .siren import SirenNet
+from .phase import PhaseNet
 
 def count_parameters(model):
     return sum(p.numel() for p in model.parameters() if p.requires_grad)
@@ -24,6 +25,8 @@ def load_model(path, device:str):
         model = SirenNet(*data["meta"])
     elif model_type == "MLPS":
         model = MultiLayerPerceptronSkips(*data["meta"])
+    elif model_type == "PHASE":
+        model = PhaseNet(*data["meta"])
     else:
         raise Exception(f"Model type {model_type} not recognized")
     model.load_state_dict(data["state_dict"])
@@ -31,7 +34,6 @@ def load_model(path, device:str):
 
 def select_model(name, DIM, n_layers, n_hidden, **kwargs):
     match name.lower():
-         
         case "mlp":
             final_activ = kwargs.get("final_activ", torch.nn.Identity)
             return MultiLayerPerceptron(
@@ -50,6 +52,9 @@ def select_model(name, DIM, n_layers, n_hidden, **kwargs):
 
         case "sll":
             return DenseSDP(DIM, n_hidden, n_layers)
+
+        case "phase":
+            return PhaseNet(DIM, n_hidden, n_layers, FF=kwargs.get("FF", False), skip_in=(4,))
 
         case _:
             raise Exception(f"model name {name} not recognized")

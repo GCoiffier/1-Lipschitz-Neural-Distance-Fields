@@ -53,9 +53,9 @@ if __name__ == "__main__":
     print("Generate train set")
     print(" | Sampling points")
     X_on  = sample_points(mesh, args.n_train)
-    X_out1 = M.processing.sampling.sample_bounding_box_3D(domain, 4*args.n_train//5)
+    X_out1 = M.sampling.sample_bounding_box_3D(domain, 4*args.n_train//5)
     domain.pad(0.5, 0.5, 0.5)
-    X_out2 = M.processing.sampling.sample_bounding_box_3D(domain, args.n_train - 4*args.n_train//5)
+    X_out2 = M.sampling.sample_bounding_box_3D(domain, args.n_train - 4*args.n_train//5)
     X_out = np.concatenate((X_out1, X_out2))
     np.random.shuffle(X_out)
     print(f" | Generated {X_on.shape[0]} (on), {X_out.shape[0]} (outside)")
@@ -66,7 +66,7 @@ if __name__ == "__main__":
         mesh_to_save["pts_train"] = point_cloud_from_arrays((X_on, -1), (X_out, 1))
 
     print("Generate test set")
-    X_test = M.processing.sampling.sample_bounding_box_3D(domain, args.n_test)
+    X_test = M.sampling.sample_bounding_box_3D(domain, args.n_test)
     tree = KDTree(np.concatenate((mesh.vertices, X_on)))
     Y_test,_ = tree.query(X_test, workers=-1)
     arrays_to_save["Xtest"] = X_test

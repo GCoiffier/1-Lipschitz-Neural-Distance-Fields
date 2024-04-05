@@ -46,7 +46,7 @@ def generate_square(n_out, n_surf, n_test):
     domain = M.geometry.BB2D(-1.,-1.,1.,1.)
     print(" | Sampling points")
     X_on, N = sample_points_and_normals(square_mesh, n_surf)
-    X_other = M.processing.sampling.sample_bounding_box_2D(domain, 10*n_out)[:,:2]
+    X_other = M.sampling.sample_bounding_box_2D(domain, 10*n_out)[:,:2]
     print(" | Discriminate interior from exterior points")
     D = np.array([distance_to_square(x) for x in X_other])
     X_in = X_other[D<0, :][:n_out]
@@ -58,7 +58,7 @@ def generate_square(n_out, n_surf, n_test):
     n_test_surf  = min(n_test//4, X_on.shape[0])
     n_test_other = n_test - n_test_surf
 
-    X_test = M.processing.sampling.sample_bounding_box_2D(domain, n_test_other)
+    X_test = M.sampling.sample_bounding_box_2D(domain, n_test_other)
     Y_test = np.array([distance_to_square(x) for x in X_test])
     X_test = np.concatenate((X_test, X_on[np.random.choice(X_on.shape[0], n_test_surf, replace=False), :]))
     Y_test = np.concatenate((Y_test,np.zeros(n_test_surf)))
@@ -81,8 +81,8 @@ def generate_square_no_interior(n_train,n_test):
     print("Generate train set")
     domain = M.geometry.BB2D(-1.,-1.,1.,1.)
     print(" | Sampling points")
-    X_on = M.processing.sampling.sample_points_from_polyline(square_mesh, n_train)[:,:2]
-    X_out = M.processing.sampling.sample_bounding_box_2D(domain, n_train)[:,:2]
+    X_on = M.sampling.sample_points_from_polyline(square_mesh, n_train)[:,:2]
+    X_out = M.sampling.sample_bounding_box_2D(domain, n_train)[:,:2]
     print(f" | Generated {X_on.shape[0]} (on), {X_out.shape[0]} (outside)")
 
     print("Generate test set")
@@ -92,7 +92,7 @@ def generate_square_no_interior(n_train,n_test):
     m_surf  = min(n_test//4, X_on.shape[0])
     m_other = n_test - m_surf
 
-    X_test = M.processing.sampling.sample_bounding_box_2D(domain, m_other)
+    X_test = M.sampling.sample_bounding_box_2D(domain, m_other)
     Y_test = np.array([distance_to_square(x) for x in X_test])
     X_test = np.concatenate((X_test, X_on[np.random.choice(X_on.shape[0], m_surf, replace=False), :]))
     Y_test = np.concatenate((Y_test,np.zeros(m_surf)))
@@ -120,7 +120,7 @@ def generate_square_distances(n_out, n_surf, n_test):
     domain = M.geometry.BB2D(-1.,-1.,1.,1.)
     print(" | Sampling points")
     X_on, _ = sample_points_and_normals(square_mesh, n_surf)
-    X_other = M.processing.sampling.sample_bounding_box_2D(domain, n_out)[:,:2]
+    X_other = M.sampling.sample_bounding_box_2D(domain, n_out)[:,:2]
     print(" | Compute distances")
     Y_train = np.array([distance_to_square(x) for x in X_other])
     X_train = np.concatenate([X_other,X_on])
@@ -130,7 +130,7 @@ def generate_square_distances(n_out, n_surf, n_test):
     n_test_surf  = min(n_test//4, X_on.shape[0])
     n_test_other = n_test - n_test_surf
 
-    X_test = M.processing.sampling.sample_bounding_box_2D(domain, n_test_other)
+    X_test = M.sampling.sample_bounding_box_2D(domain, n_test_other)
     Y_test = np.array([distance_to_square(x) for x in X_test])
     X_test = np.concatenate((X_test, X_on[np.random.choice(X_on.shape[0], n_test_surf, replace=False), :]))
     Y_test = np.concatenate((Y_test,np.zeros(n_test_surf)))
@@ -149,7 +149,7 @@ def generate_circle(n_out, n_surf, n_test):
     X_on = [cmath.rect(RADIUS,ang) for ang in angles]
     X_on = np.array([[x.real, x.imag] for x in X_on]) # convert from complexes to vec2
     N = X_on/np.linalg.norm(X_on,axis=1).reshape((-1,1))
-    X_other = M.processing.sampling.sample_bounding_box_2D(domain, 10*n_out)[:,:2]
+    X_other = M.sampling.sample_bounding_box_2D(domain, 10*n_out)[:,:2]
 
     print(" | Discriminate interior from exterior points")    
     D = np.array([distance_to_circle(x) for x in X_other])
@@ -162,7 +162,7 @@ def generate_circle(n_out, n_surf, n_test):
     n_test_surf  = n_test//4
     n_test_other = n_test - n_test_surf
 
-    X_test = M.processing.sampling.sample_bounding_box_2D(domain, n_test_other)
+    X_test = M.sampling.sample_bounding_box_2D(domain, n_test_other)
     Y_test = np.array([distance_to_circle(x) for x in X_test])
 
     angles = np.random.random(n_test_surf)*2*np.pi
@@ -184,14 +184,14 @@ def generate_circle_no_interior(n_train, n_test):
     angles = np.random.random(n_train)*2*np.pi
     X_on = [cmath.rect(RADIUS,ang) for ang in angles]
     X_on = np.array([[x.real, x.imag] for x in X_on]) # convert from complexes to vec2
-    X_out = M.processing.sampling.sample_bounding_box_2D(domain, n_train)[:,:2]
+    X_out = M.sampling.sample_bounding_box_2D(domain, n_train)[:,:2]
     print(f" | Generated {X_on.shape[0]} (on), {X_out.shape[0]} (outside)")
 
     print("Generate test set")
     distance_to_circle = lambda x : abs(np.linalg.norm(x) - RADIUS)
     n_test_surf  = min(n_test//4, X_on.shape[0])
     n_test_other = n_test - n_test_surf
-    X_test = M.processing.sampling.sample_bounding_box_2D(domain, n_test_other)
+    X_test = M.sampling.sample_bounding_box_2D(domain, n_test_other)
     Y_test = np.array([distance_to_circle(x) for x in X_test])
     X_test = np.concatenate((X_test, X_on[np.random.choice(X_on.shape[0], n_test_surf, replace=False), :]))
     Y_test = np.concatenate((Y_test,np.zeros(n_test_surf)))
@@ -209,7 +209,7 @@ def generate_circle_distances(n_out, n_surf, n_test):
     angles = np.random.random(n_surf)*2*np.pi
     X_on = [cmath.rect(RADIUS,ang) for ang in angles]
     X_on = np.array([[x.real, x.imag] for x in X_on]) # convert from complexes to vec2
-    X_other = M.processing.sampling.sample_bounding_box_2D(domain, 10*n_out)[:,:2]
+    X_other = M.sampling.sample_bounding_box_2D(domain, 10*n_out)[:,:2]
 
     print(" | Compute distances")    
     Y_train = np.array([distance_to_circle(x) for x in X_other])
@@ -220,7 +220,7 @@ def generate_circle_distances(n_out, n_surf, n_test):
     n_test_surf  = n_test//4
     n_test_other = n_test - n_test_surf
 
-    X_test = M.processing.sampling.sample_bounding_box_2D(domain, n_test_other)
+    X_test = M.sampling.sample_bounding_box_2D(domain, n_test_other)
     Y_test = np.array([distance_to_circle(x) for x in X_test])
 
     angles = np.random.random(n_test_surf)*2*np.pi
@@ -240,7 +240,7 @@ def generate_segment(n_train,n_test):
 
     print(" | Sampling points")
     X_on = np.array([t*A+ (1-t)*B for t in np.random.random(n_train)])
-    X_out = M.processing.sampling.sample_bounding_box_2D(domain, n_train)[:,:2]
+    X_out = M.sampling.sample_bounding_box_2D(domain, n_train)[:,:2]
     print(f" | Generated {X_on.shape[0]} (on), {X_out.shape[0]} (outside)")
 
     print("Generate test set")
@@ -252,7 +252,7 @@ def generate_segment(n_train,n_test):
     
     m_surf  = min(n_test//4, X_on.shape[0])
     m_other = n_test - m_surf
-    X_test = M.processing.sampling.sample_bounding_box_2D(domain, m_other)
+    X_test = M.sampling.sample_bounding_box_2D(domain, m_other)
     Y_test = np.array([distance_to_segment(x) for x in X_test])
     X_test = np.concatenate((X_test, X_on[np.random.choice(X_on.shape[0], m_surf, replace=False), :]))
     Y_test = np.concatenate((Y_test,np.zeros(m_surf)))
@@ -272,14 +272,14 @@ def generate_segment_distances(n_train, n_on, n_test):
 
     print(" | Sampling points")
     X_on = np.array([t*A+ (1-t)*B for t in np.random.random(n_on)])
-    X_out = M.processing.sampling.sample_bounding_box_2D(domain, n_train)[:,:2]
+    X_out = M.sampling.sample_bounding_box_2D(domain, n_train)[:,:2]
     X_train = np.concatenate((X_on, X_out))
     Y_train = np.array([distance_to_segment(x) for x in X_train])
     
     print("Generate test set")
     m_surf  = min(n_test//4, X_on.shape[0])
     m_other = n_test - m_surf
-    X_test = M.processing.sampling.sample_bounding_box_2D(domain, m_other)
+    X_test = M.sampling.sample_bounding_box_2D(domain, m_other)
     Y_test = np.array([distance_to_segment(x) for x in X_test])
     X_test = np.concatenate((X_test, X_on[np.random.choice(X_on.shape[0], m_surf, replace=False), :]))
     Y_test = np.concatenate((Y_test,np.zeros(m_surf)))

@@ -74,7 +74,7 @@ if __name__ == "__main__":
 
         case "unsigned":
             X_on, _ = sample_points_and_normals(mesh, args.n_train)
-            X_out = M.processing.sampling.sample_bounding_box_2D(domain, args.n_train)[:,:2]
+            X_out = M.sampling.sample_bounding_box_2D(domain, args.n_train)[:,:2]
             print(f" | Generated {X_on.shape[0]} (on), {X_out.shape[0]} (outside)")
             arrays_to_save["Xtrain_on"] = X_on
             arrays_to_save["Xtrain_out"] = X_out
@@ -87,7 +87,7 @@ if __name__ == "__main__":
             mult = 10
             ok = False
             while not ok:
-                X_other = M.processing.sampling.sample_bounding_box_2D(domain, mult*args.n_train)[:,:2]
+                X_other = M.sampling.sample_bounding_box_2D(domain, mult*args.n_train)[:,:2]
                 Y_other,_,_ = signed_distance(np.pad(X_other, ((0,0), (0,1))), V, F)
                 X_in = X_other[Y_other<-1e-3, :][:args.n_train]
                 X_out = X_other[Y_other>1e-2, :][:args.n_train]
@@ -106,7 +106,7 @@ if __name__ == "__main__":
 
         case "dist":
             X_on, N = sample_points_and_normals(mesh, args.n_boundary)
-            X_out = M.processing.sampling.sample_bounding_box_2D(domain,args.n_train)[:,:2]
+            X_out = M.sampling.sample_bounding_box_2D(domain,args.n_train)[:,:2]
             Y_out,_,_ = signed_distance(np.pad(X_out, ((0,0), (0,1))), V, F)
             X_train = np.concatenate((X_out, X_on))
             Y_train = np.concatenate((Y_out, np.zeros(X_on.shape[0])))
@@ -134,7 +134,7 @@ if __name__ == "__main__":
 
     print("Generate test set")
     args.n_test_boundary = min(args.n_test_boundary, args.n_boundary)
-    X_test = M.processing.sampling.sample_bounding_box_2D(domain, args.n_test)
+    X_test = M.sampling.sample_bounding_box_2D(domain, args.n_test)
     Y_test,_,_ = signed_distance(np.pad(X_test, ((0,0), (0,1))), V,F)
     if args.mode in ["unsigned", "sal"]:
         Y_test = abs(Y_test)

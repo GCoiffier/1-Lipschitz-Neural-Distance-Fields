@@ -7,11 +7,11 @@ from igl import fast_winding_number_for_meshes, signed_distance
 from common.visualize import point_cloud_from_array, point_cloud_from_arrays, vector_field_from_array
 
 def extract_train_point_cloud(n_surf, n_train, mesh, domain):
-    X_bd, N_bd = M.processing.sampling.sample_points_from_surface(mesh, n_surf, return_normals=True)
+    X_bd, N_bd = M.sampling.sample_points_from_surface(mesh, n_surf, return_normals=True)
     domain.pad(0.05,0.05,0.05)
-    X_other1 = M.processing.sampling.sample_bounding_box_3D(domain, 200*n_train)
+    X_other1 = M.sampling.sample_bounding_box_3D(domain, 200*n_train)
     domain.pad(0.95,0.95,0.95)
-    X_other2 = M.processing.sampling.sample_bounding_box_3D(domain, 5*n_train)
+    X_other2 = M.sampling.sample_bounding_box_3D(domain, 5*n_train)
     X_other = np.concatenate((X_other1, X_other2))
     np.random.shuffle(X_other)
     Y_other = fast_winding_number_for_meshes(np.array(mesh.vertices), np.array(mesh.faces, dtype=np.int32), X_other)
@@ -22,26 +22,26 @@ def extract_train_point_cloud(n_surf, n_train, mesh, domain):
     return X_bd, N_bd, X_in, X_out
 
 def extract_train_point_cloud_unsigned(n_pt, mesh, domain):
-    X_on = M.processing.sampling.sample_points_from_surface(mesh, n_pt)
+    X_on = M.sampling.sample_points_from_surface(mesh, n_pt)
     domain.pad(0.05,0.05,0.05)
-    X_out1 = M.processing.sampling.sample_bounding_box_3D(domain, n_pt//2)
+    X_out1 = M.sampling.sample_bounding_box_3D(domain, n_pt//2)
     domain.pad(0.95,0.95,0.95)
-    X_out2 = M.processing.sampling.sample_bounding_box_3D(domain, n_pt//2)
+    X_out2 = M.sampling.sample_bounding_box_3D(domain, n_pt//2)
     X_out = np.concatenate((X_out1, X_out2))
     print(f"Sampled : {X_on.shape[0]} (surface), {X_out.shape[0]} (outside)")
     return X_on, X_out
 
 def extract_train_point_cloud_distances(n_surf, n_pt, mesh, domain):
     print(" | Sample points on surface")
-    X_on = M.processing.sampling.sample_points_from_surface(mesh, n_surf)
+    X_on = M.sampling.sample_points_from_surface(mesh, n_surf)
     print(" | Sample uniform distribution in domain")
     domain.pad(0.05,0.05,0.05)
-    X_out1 = M.processing.sampling.sample_bounding_box_3D(domain, n_pt - n_pt//10)
+    X_out1 = M.sampling.sample_bounding_box_3D(domain, n_pt - n_pt//10)
     domain.pad(1.95,1.95,1.95)
-    X_out2 = M.processing.sampling.sample_bounding_box_3D(domain, n_pt//10)
+    X_out2 = M.sampling.sample_bounding_box_3D(domain, n_pt//10)
     X_out = np.concatenate((X_out1, X_out2))
     print(" | Compute distances")
-    Y_out,_,_ = signed_distance(X_out, np.array(mesh.vertices), np.array(mesh.faces))
+    Y_out,_,_ = signed_distance(X_out, np.array(mesh.vertices), np.array(mesh.faces, dtype=np.int32))
     print(f"Sampled : {X_on.shape[0]} (surface), {X_out.shape[0]} (outside)")
     return np.concatenate((X_out,X_on)), np.concatenate((Y_out, np.zeros(X_on.shape[0])))
 
@@ -75,7 +75,7 @@ if __name__ == "__main__":
 
         case "unsigned":
             if args.importance_sampling:
-                X_out1 = M.processing.sampling.sample_bounding_box_3D(domain, 10*args.n_train)
+                X_out1 = M.sampling.sample_bounding_box_3D(domain, 10*args.n_train)
                 Y_out1 = fast_winding_number_for_meshes(np.array(mesh.vertices), np.array(mesh.faces, dtype=np.int32), X_out1)
                 mask = np.logical_and(Y_out1 > 0.2, Y_out1 < 0.3)
                 X_out1 = X_out1[mask, :]
@@ -96,7 +96,7 @@ if __name__ == "__main__":
         case "signed":
             if args.importance_sampling:          
                 BETA = 30
-                X_on, N = M.processing.sampling.sample_points_from_surface(mesh, args.n_boundary, return_normals=True)
+                X_on, N = M.sampling.sample_points_from_surface(mesh, args.n_boundary, return_normals=True)
                 X_u, Y_u = extract_train_point_cloud_distances(10, 20*args.n_train, mesh, domain)            
                 weight = np.exp(-BETA*abs(Y_u))
                 weight /= np.sum(weight)
@@ -119,7 +119,7 @@ if __name__ == "__main__":
         case "dist":
             if args.importance_sampling:          
                 BETA = 30
-                X_on = M.processing.sampling.sample_points_from_surface(mesh, args.n_boundary)
+                X_on = M.sampling.sample_points_from_surface(mesh, args.n_boundary)
                 X_u, Y_u = extract_train_point_cloud_distances(10, 10*args.n_train, mesh, domain)            
                 weight = np.exp(-BETA*abs(Y_u))
                 weight /= np.sum(weight)
@@ -147,10 +147,10 @@ if __name__ == "__main__":
 
     print("\nGenerate test set")
     print(" | Sampling points on surface")
-    X_surf_test = M.processing.sampling.sample_points_from_surface(mesh, args.n_test_boundary)
+    X_surf_test = M.sampling.sample_points_from_surface(mesh, args.n_test_boundary)
     print(" | Sampling uniform distribution in domain")
-    X_other_test1 = M.processing.sampling.sample_bounding_box_3D(M.geometry.BB3D.of_mesh(mesh,padding=0.1), args.n_test//2)
-    X_other_test2 = M.processing.sampling.sample_bounding_box_3D(M.geometry.BB3D.of_mesh(mesh,padding=1.), args.n_test//2)
+    X_other_test1 = M.sampling.sample_bounding_box_3D(M.geometry.BB3D.of_mesh(mesh,padding=0.1), args.n_test//2)
+    X_other_test2 = M.sampling.sample_bounding_box_3D(M.geometry.BB3D.of_mesh(mesh,padding=1.), args.n_test//2)
     X_other_test = np.concatenate((X_other_test1, X_other_test2))
     
     print(" | Compute distances")

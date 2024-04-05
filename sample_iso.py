@@ -29,10 +29,11 @@ if __name__ == "__main__":
         domain = M.geometry.BB2D(-1, -1, 1, 1)
         init_samples = M.sampling.sample_bounding_box_2D(domain, args.n_points)
     elif DIM==3:
-        domain = M.geometry.BB3D(-1, -1, -1, 1, 1, 1)
-        init_samples = M.sampling.sample_bounding_box_3D(domain, args.n_points)
+        # domain = M.geometry.BB3D(-1, -1, -1, 1, 1, 1)
+        # init_samples = M.sampling.sample_bounding_box_3D(domain, args.n_points)
+        init_samples = M.sampling.sample_sphere(M.Vec.zeros(3), 2., args.n_points)
     
-    # surf_samples = project_onto_iso(samples, model, iso=0., batch_size=args.batch_size, max_steps=100)
+    # surf_samples = project_onto_iso(init_samples, model, iso=0., batch_size=args.batch_size, max_steps=100, device=device)
     # surf_samples = gradient_descent(init_samples, model, batch_size=args.batch_size, max_steps=100)
-    surf_samples = sample_iso(init_samples, model, batch_size=args.batch_size, max_steps=30)
-    M.mesh.save(point_cloud_from_array(surf_samples),"output/samples.mesh")
+    surf_samples = sample_iso(init_samples, model, batch_size=args.batch_size, max_steps=10)
+    M.mesh.save(point_cloud_from_array(surf_samples),"output/surface_samples.obj")

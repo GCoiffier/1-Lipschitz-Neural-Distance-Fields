@@ -26,8 +26,8 @@ if __name__ == "__main__":
 
     # model parameters
     parser.add_argument("-model","--model", choices=["ortho", "sll"], default="sll")
-    parser.add_argument("-n-layers", "--n-layers", type=int, default=8)
-    parser.add_argument("-n-hidden", "--n-hidden", type=int, default=32)
+    parser.add_argument("-n-layers", "--n-layers", type=int, default=20)
+    parser.add_argument("-n-hidden", "--n-hidden", type=int, default=128)
 
     # optimization parameters
     parser.add_argument("-ne", "--epochs", type=int, default=200, help="Number of epochs")
@@ -165,7 +165,7 @@ if __name__ == "__main__":
             callbacks.append(Render2DCB(config.output_folder, config.checkpoint_freq, plot_domain, res=500))
         else:
             callbacks.append(MarchingCubeCB(config.output_folder, config.checkpoint_freq, plot_domain, res=100, iso=0))
-    callbacks.append(UpdateHkrRegulCB({1 : 1., 3 : 10., 6: 100., 30: config.loss_regul}))
+    callbacks.append(UpdateHkrRegulCB({1 : 1., 5 : 10., 10: 100., 30: config.loss_regul}))
     
     if config.signed:
         trainer = Trainer((loader_in, loader_out, loader_bd), test_loader, config)
