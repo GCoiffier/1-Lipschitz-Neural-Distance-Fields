@@ -13,7 +13,7 @@
 
 ## How to run
 
-#### Extracting a dataset
+### Extracting a dataset
 
 - 2D polyline or 2D mesh
 - 3D polyline
@@ -25,7 +25,7 @@ Modes are :
 - `unsigned`: partition of training points as surface/outside to recover an unsigned field
 - `dist`: outputs a dataset of points with associated signed distances
 
-#### Training a neural distance field
+### Training a neural distance field
 
 If you generated points for `foo.obj`, then call `python train_lip.py foo`
 
@@ -68,7 +68,7 @@ options:
   -cpu                  force training on CPU
 ```
 
-#### Querying the final neural field
+### Querying the final neural field
 
 - Marching Squares
 
