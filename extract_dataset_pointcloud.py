@@ -98,7 +98,6 @@ if __name__ == "__main__":
     mesh_to_save = dict()
     arrays_to_save = {
         "Xtrain_on" : Vtx,
-        "Nrml" : N 
     }
     match args.mode:
         case "unsigned":

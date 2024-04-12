@@ -46,6 +46,18 @@ def point_cloud_from_arrays(*args) -> M.mesh.PointCloud:
 
 
 def render_sdf_2d(render_path, contour_path, gradient_path, model, domain : M.geometry.BB2D, device, res=1000, batch_size=1000):
+    """ Renders a 2D SDF
+
+    Args:
+        render_path (str): Path to export a color render
+        contour_path (str): Path to export the contour plot
+        gradient_path (str): Path to export the gradient norm plot
+        model : SDF neural model
+        domain (M.geometry.BB2D): axis aligned bounding box to represent the plotting domain.
+        device (str): cpu or cuda
+        res (int, optional): Image resolution. Defaults to 800.
+        batch_size (int, optional): Size of forward batches. Defaults to 1000.        
+    """
     
     X = np.linspace(domain.left, domain.right, res)
     resY = round(res * domain.height/domain.width)
@@ -100,6 +112,21 @@ def render_sdf_2d(render_path, contour_path, gradient_path, model, domain : M.ge
         plt.savefig(gradient_path, bbox_inches='tight', pad_inches=0)
 
 def render_sdf_quad(render_path, contour_path, gradient_path, model, P0, P1, P2, device, res=800, batch_size=1000):
+    """
+    Renders a 3D sdf along a specified (planar) quad in space.
+
+    Args:
+        render_path (str): Path to export a color render
+        contour_path (str): Path to export the contour plot
+        gradient_path (str): Path to export the gradient norm plot
+        model : SDF neural model
+        P0 (array): First point of the quad ( (0,0) in parameter space)
+        P1 (array): Second point of the quad ( (1,0) in parameter space)
+        P2 (array): Thirs point of the quad ( (0,1) in parameter space)
+        device (str): cpu or cuda
+        res (int, optional): Image resolution. Defaults to 800.
+        batch_size (int, optional): Size of forward batches. Defaults to 1000.
+    """
     
     dx = P1 - P0
     dy = P2 - P0

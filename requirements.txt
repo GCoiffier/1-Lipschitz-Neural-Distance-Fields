@@ -1,5 +1,8 @@
 libigl
-cgal-bindings
-numba
 torch
 deel-torchlip
+mouette
+numpy
+scipy
+scikit-learn
+skimage

@@ -41,8 +41,7 @@ if __name__ == "__main__":
     parser.add_argument("input_mesh", type=str, \
         help="path to the input mesh")
     parser.add_argument("-mode", "--mode", default="signed", choices=["signed", "unsigned", "dist", "sal"])
-    parser.add_argument("-no", "--n-train", type=int, default=10000)
-    parser.add_argument("-ni", "--n-boundary", type=int, default=5000)
+    parser.add_argument("-n", "--n-train", type=int, default=10000)
     parser.add_argument("-nt", "--n-test",  type=int, default=3000)
     parser.add_argument("-nti", "--n-test-boundary", type=int, default=1000)
     parser.add_argument("-visu", help="generates visualization point cloud", action="store_true")
@@ -83,7 +82,7 @@ if __name__ == "__main__":
                 mesh_to_save["pts_train"] = point_cloud_from_arrays((X_on, -1), (X_out, 1))
 
         case "signed":
-            X_on, N = sample_points_and_normals(mesh, args.n_boundary)
+            X_on,_ = sample_points_and_normals(mesh, args.n_train//20)
             mult = 10
             ok = False
             while not ok:
@@ -93,23 +92,20 @@ if __name__ == "__main__":
                 X_out = X_other[Y_other>1e-2, :][:args.n_train]
                 ok = (X_in.shape[0] == args.n_train and X_out.shape[0] == args.n_train)
                 mult *= 5
-            # X_in = np.concatenate((X_on,X_in))[:X_out.shape[0],:]
-            print(f" | Generated {X_in.shape[0]} (inside), {X_out.shape[0]} (outside), {X_on.shape[0]} (boundary)")
-            arrays_to_save["Xtrain_on"] = X_on
-            arrays_to_save["Nrml"] = N
+            X_in = np.concatenate((X_on,X_in))[:X_out.shape[0],:]
+            np.random.shuffle(X_in)
+            print(f" | Generated {X_in.shape[0]} (inside), {X_out.shape[0]} (outside)")
             arrays_to_save["Xtrain_in"] = X_in
             arrays_to_save["Xtrain_out"] = X_out
             if args.visu:
-                mesh_to_save["pts_on"] = point_cloud_from_array(X_on)
-                mesh_to_save["pts_train"] = point_cloud_from_arrays((X_out, 1.), (X_in,-1), (X_on, 0.))
-                mesh_to_save["normals"] = vector_field_from_array(X_on, N, 0.1)
+                mesh_to_save["pts_train"] = point_cloud_from_arrays((X_out, 1.), (X_in,-1))
 
         case "dist":
-            X_on, N = sample_points_and_normals(mesh, args.n_boundary)
+            X_on, N = sample_points_and_normals(mesh, args.n_train//20)
             X_out = M.sampling.sample_bounding_box_2D(domain,args.n_train)[:,:2]
             Y_out,_,_ = signed_distance(np.pad(X_out, ((0,0), (0,1))), V, F)
-            X_train = np.concatenate((X_out, X_on))
-            Y_train = np.concatenate((Y_out, np.zeros(X_on.shape[0])))
+            X_train = np.concatenate((X_on, X_out))[:args.n_train,:]
+            Y_train = np.concatenate((np.zeros(X_on.shape[0], Y_out)))[:args.n_train,:]
             arrays_to_save["Xtrain"] = X_train
             arrays_to_save["Ytrain"] = Y_train
             if args.visu:
@@ -133,12 +129,12 @@ if __name__ == "__main__":
                 mesh_to_save["normals"] = vector_field_from_array(X_on,Nrml,0.1)
 
     print("Generate test set")
-    args.n_test_boundary = min(args.n_test_boundary, args.n_boundary)
     X_test = M.sampling.sample_bounding_box_2D(domain, args.n_test)
+    X_test_on, _ = sample_points_and_normals(mesh, args.n_test_boundary)
     Y_test,_,_ = signed_distance(np.pad(X_test, ((0,0), (0,1))), V,F)
     if args.mode in ["unsigned", "sal"]:
         Y_test = abs(Y_test)
-    X_test = np.concatenate((X_test, X_on[np.random.choice(X_on.shape[0], args.n_test_boundary, replace=False), :]))
+    X_test = np.concatenate((X_test, X_test_on))
     Y_test = np.concatenate((Y_test,np.zeros(args.n_test_boundary)))
     arrays_to_save["Xtest"] = X_test
     arrays_to_save["Ytest"] = Y_test

@@ -63,76 +63,17 @@ class Trainer(M.Logger):
             t0 = time.time()
             lossfun_hkr = LossHKR(self.config.loss_margin, self.config.loss_regul)
             train_loss = dict()
-            if self.config.hkr_weight > 0.:
-                train_loss["hkr"] = 0.
-            if self.config.attach_weight >0. :
-                train_loss["recons"] = 0.
-            if self.config.normal_weight >0. :
-                train_loss["normals"] = 0.
-            if self.config.eikonal_weight >0. :
-                train_loss["eik"] = 0.
-            if self.config.gnorm_weight > 0.:
-                train_loss["gnorm"] = 0.
-            
+            train_loss["hkr"] = 0.
             train_length = len(self.train_loaders[0])
-            for (X_in, X_out, X_bd) in tqdm(zip(*self.train_loaders), total=train_length):
+            for (X_in, X_out) in tqdm(zip(*self.train_loaders), total=train_length):
                 self.optimizer.zero_grad() # zero the parameter gradients
                 # forward + backward + optimize
-                if self.config.normal_weight>0.:
-                    X_bd, N_bd = X_bd
-                    X_bd.requires_grad = True
-                else:
-                    X_bd, = X_bd
                 Y_in = model(X_in[0]) # forward computation
                 Y_out = model(X_out[0])
-                Y_bd = model(X_bd)
-                total_batch_loss = 0.
-
-                ### HKR loss
-                if self.config.hkr_weight>0.:
-                    batch_loss_hkr = torch.sum(lossfun_hkr(-Y_in) + lossfun_hkr(Y_out))
-                    total_batch_loss += self.config.hkr_weight * batch_loss_hkr
-                    train_loss["hkr"] += self.config.hkr_weight * float(batch_loss_hkr.detach())
-                
-                ### Normal fitting loss
-                if self.config.normal_weight>0.:
-                    grad = autograd.grad(outputs=Y_bd, inputs=X_bd,
-                            grad_outputs=torch.ones_like(Y_bd).to(self.config.device),
-                            create_graph=True, retain_graph=True)[0]
-                    # batch_loss_normals = self.config.normal_weight*torch.sum((grad - N_bd[2])**2)
-                    batch_loss_normals = self.config.normal_weight*vector_alignment_loss(grad, N_bd[0])
-                    total_batch_loss += batch_loss_normals
-                    train_loss["normals"] += float(batch_loss_normals.detach())
-               
-                ### Reconstruction loss
-                if self.config.attach_weight>0.:
-                    batch_loss_recons = self.config.attach_weight * torch.sum(Y_bd**2)
-                    train_loss["recons"] += float(batch_loss_recons.detach())
-                    total_batch_loss += batch_loss_recons
-
-                ### Eikonal loss
-                if self.config.eikonal_weight>0.:
-                    x_rdm = 2*torch.rand_like(X_in[0])-1 # between -1 and 1
-                    x_rdm.requires_grad = True
-                    y_rdm = model(x_rdm)
-                    batch_grad = torch.autograd.grad(y_rdm, x_rdm, grad_outputs=torch.ones_like(y_rdm), create_graph=True)[0]
-                    batch_grad_norm = batch_grad.norm(dim=1)
-                    batch_loss_eik = self.config.eikonal_weight * F.mse_loss(batch_grad_norm, torch.ones_like(batch_grad_norm))
-                    total_batch_loss += batch_loss_eik
-                    train_loss["eik"] += float(batch_loss_eik.detach())
-
-                ### Max grad norm loss
-                if self.config.gnorm_weight>0.:
-                    x_rdm = 2*torch.rand_like(X_in[0])-1 # between -1 and 1
-                    x_rdm.requires_grad = True
-                    y_rdm = model(x_rdm)
-                    batch_grad = torch.autograd.grad(y_rdm, x_rdm, grad_outputs=torch.ones_like(y_rdm), create_graph=True)[0]
-                    # batch_loss_gnorm = -self.config.gnorm_weight * torch.sum(batch_grad.norm(dim=1))
-                    batch_loss_gnorm = self.config.gnorm_weight * (1-torch.sum(batch_grad * batch_grad))
-                    total_batch_loss += batch_loss_gnorm
-                    train_loss["gnorm"] += float(batch_loss_gnorm.detach()) 
-
+                batch_loss_hkr = torch.sum(lossfun_hkr(-Y_in) + lossfun_hkr(Y_out))
+                total_batch_loss = batch_loss_hkr
                 total_batch_loss.backward() # call back propagation
+                train_loss["hkr"] += float(batch_loss_hkr.detach())
                 self.optimizer.step() 
                 for cb in self.callbacks:
                     cb.callOnEndForward(self, model)
@@ -185,9 +126,7 @@ class Trainer(M.Logger):
             train_loss["fit"] = 0.
             if self.config.eikonal_weight >0. :
                 train_loss["eik"] = 0.
-            if self.config.tv_weight >0. :
-                train_loss["tv"] = 0.
-
+                
             for (x,y_target) in tqdm(self.train_loaders, total=len(self.train_loaders)):
                 self.optimizer.zero_grad() # zero the parameter gradients
                 # forward + backward + optimize
