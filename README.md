@@ -1,5 +1,6 @@
 # 1-Lipschitz Neural Distance Fields
 
+![banner](https://github.com/GCoiffier/1-Lipschitz-Neural-Distance-Fields/assets/20912374/0b92d20d-054a-4f80-8746-ccfe13fd9eae)
 
 ## Dependencies
 - numpy
