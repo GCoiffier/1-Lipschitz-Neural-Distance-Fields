@@ -20,26 +20,26 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     # dataset parameters
-    parser.add_argument("dataset", type=str)
-    parser.add_argument("-o", "--output-name", type=str, default="")
-    parser.add_argument("--unsigned", action="store_true")
+    parser.add_argument("dataset", type=str, help="name of the dataset to train on")
+    parser.add_argument("-o", "--output-name", type=str, default="", help="custom output folder name")
+    parser.add_argument("--unsigned", action="store_true", help="flag for training an unsigned distance field")
 
     # model parameters
-    parser.add_argument("-model","--model", choices=["ortho", "sll"], default="sll")
-    parser.add_argument("-n-layers", "--n-layers", type=int, default=20)
-    parser.add_argument("-n-hidden", "--n-hidden", type=int, default=128)
+    parser.add_argument("-model","--model", choices=["ortho", "sll"], default="sll", help="Lipschitz architecture")
+    parser.add_argument("-n-layers", "--n-layers", type=int, default=20, help="number of layers in the network")
+    parser.add_argument("-n-hidden", "--n-hidden", type=int, default=128, help="size of the layers")
 
     # optimization parameters
-    parser.add_argument("-ne", "--epochs", type=int, default=200, help="Number of epochs")
-    parser.add_argument('-bs',"--batch-size", type=int, default=200, help="Batch size")
-    parser.add_argument("-tbs", "--test-batch-size", type = int, default = 5000, help="Batch size on test set")
+    parser.add_argument("-ne", "--epochs", type=int, default=200, help="Number of training epochs")
+    parser.add_argument('-bs',"--batch-size", type=int, default=200, help="Train batch size")
+    parser.add_argument("-tbs", "--test-batch-size", type = int, default = 5000, help="Test batch size")
     parser.add_argument("-lr", "--learning-rate", type=float, default=5e-4, help="Adam's learning rate")
-    parser.add_argument("-lm", "--loss-margin", type=float, default=1e-2)
-    parser.add_argument("-lmbd", "--loss-lambda", type=float, default=100.)
+    parser.add_argument("-lm", "--loss-margin", type=float, default=1e-2, help="margin m in the hKR loss")
+    parser.add_argument("-lmbd", "--loss-lambda", type=float, default=100., help="lambda in the hKR loss")
     
     # misc
-    parser.add_argument("-cp", "--checkpoint-freq", type=int, default=10)
-    parser.add_argument("-cpu", action="store_true")
+    parser.add_argument("-cp", "--checkpoint-freq", type=int, default=10, help="Number of epochs between each model save")
+    parser.add_argument("-cpu", action="store_true", help="force training on CPU")
     args = parser.parse_args()
 
     #### Config ####

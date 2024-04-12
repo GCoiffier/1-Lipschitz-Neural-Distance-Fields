@@ -27,49 +27,46 @@ Modes are :
 
 #### Training a neural distance field
 
-If you generated points for `foo.obj`, then call:
+If you generated points for `foo.obj`, then call `python train_lip.py foo`
 
-`python train_lip.py foo`
-Options are:
-  `-o OUTPUT_NAME, --output-name OUTPUT_NAME`
-        Custom output name
+```
+usage: train_lip.py [-h] [-o OUTPUT_NAME] [--unsigned] [-model {ortho,sll}]
+                    [-n-layers N_LAYERS] [-n-hidden N_HIDDEN] [-ne EPOCHS]
+                    [-bs BATCH_SIZE] [-tbs TEST_BATCH_SIZE]
+                    [-lr LEARNING_RATE] [-lm LOSS_MARGIN] [-lmbd LOSS_LAMBDA]
+                    [-cp CHECKPOINT_FREQ] [-cpu]
+                    dataset
 
-  `--unsigned`
-        To train an unsigned distance field (needed to be compatible with unsigned datasets)
+positional arguments:
+  dataset               name of the dataset to train on
 
-  `-model {ortho,sll}, --model {ortho,sll}`
-        Lipschitz architecture. Default is `sll`. `ortho` is the architecture described by Anil et al.
-  
-  `-n-layers N_LAYERS, --n-layers N_LAYERS`
-        Number of Lipschitz layers in the network
-
-  `-n-hidden N_HIDDEN, --n-hidden N_HIDDEN`
-        Size of the Lipschitz layers in the network
-
-  `-ne EPOCHS, --epochs EPOCHS`
-        Number of training epochs
-
-  `-bs BATCH_SIZE, --batch-size BATCH_SIZE`
-        Training batch size
-
-  `-tbs TEST_BATCH_SIZE, --test-batch-size TEST_BATCH_SIZE`
-        Testing batch size
-  
-  `-lr LEARNING_RATE, --learning-rate LEARNING_RATE`
-        Adam's learning rate
-  
-  `-lm LOSS_MARGIN, --loss-margin LOSS_MARGIN`
-        Margin parameter m in the hKR loss
-
-  `-lmbd LOSS_LAMBDA, --loss-lambda LOSS_LAMBDA`
-        Parameter lambda in the hKR loss
-
-  `-cp CHECKPOINT_FREQ, --checkpoint-freq CHECKPOINT_FREQ`
-        Frequency of model checkpoints
-
-  `-cpu`
-        Force training on the CPU
-
+options:
+  -h, --help            show this help message and exit
+  -o OUTPUT_NAME, --output-name OUTPUT_NAME
+                        custom output folder name
+  --unsigned            flag for training an unsigned distance field
+  -model {ortho,sll}, --model {ortho,sll}
+                        Lipschitz architecture
+  -n-layers N_LAYERS, --n-layers N_LAYERS
+                        number of layers in the network
+  -n-hidden N_HIDDEN, --n-hidden N_HIDDEN
+                        size of the layers
+  -ne EPOCHS, --epochs EPOCHS
+                        Number of training epochs
+  -bs BATCH_SIZE, --batch-size BATCH_SIZE
+                        Train batch size
+  -tbs TEST_BATCH_SIZE, --test-batch-size TEST_BATCH_SIZE
+                        Test batch size
+  -lr LEARNING_RATE, --learning-rate LEARNING_RATE
+                        Adam's learning rate
+  -lm LOSS_MARGIN, --loss-margin LOSS_MARGIN
+                        margin m in the hKR loss
+  -lmbd LOSS_LAMBDA, --loss-lambda LOSS_LAMBDA
+                        lambda in the hKR loss
+  -cp CHECKPOINT_FREQ, --checkpoint-freq CHECKPOINT_FREQ
+                        Number of epochs between each model save
+  -cpu                  force training on CPU
+```
 
 #### Querying the final neural field
 
