@@ -28,7 +28,7 @@ def main(model, device, resolution, camera_pos, convergence_threshold):
     # ---------------- camera rotation ---------------- #
 
     target_position = torch.Tensor([0.0, 0.0, 0.0]).to(device)
-    up_direction = torch.Tensor([0.0, 0.0, 1.0]).to(device)
+    up_direction = torch.Tensor([0.0, 0.0, -1.0]).to(device)
 
     camera_z_axis = target_position - camera_position
     camera_x_axis = torch.cross(up_direction, camera_z_axis, dim=-1)
@@ -128,5 +128,6 @@ if __name__ == "__main__":
     device = get_device()
     model = load_model(args.model, device)
 
-    image = main(model, device, (args.width, args.height), (args.distance, 4.8, 3.9), args.convergence_threshold)
+    # image = main(model, device, (args.width, args.height), (args.distance, 4.8, 3.9), args.convergence_threshold) # Elephant parameters
+    image = main(sdf.rounding(model, -0.005), device, (args.width, args.height), (args.distance, np.pi/2+0.1, np.pi/2+0.1), args.convergence_threshold)
     plt.imsave(f"{args.output_name}.png", image)

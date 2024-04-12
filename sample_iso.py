@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
     parser.add_argument("model", type=str)
     parser.add_argument("-o", "--output-name", type=str, default="", help="output name")
-    parser.add_argument("-iso", '--isovalues', type=float, default=0.)
+    parser.add_argument("-iso", '--iso', type=float, default=0.)
     parser.add_argument("-n", "--n-points", type=int, default=1000, help="number of sampled points")
     parser.add_argument("-cpu", action="store_true")
     parser.add_argument("-bs", "--batch-size", type=int, default=1000)
@@ -35,5 +35,5 @@ if __name__ == "__main__":
     
     # surf_samples = project_onto_iso(init_samples, model, iso=0., batch_size=args.batch_size, max_steps=100, device=device)
     # surf_samples = gradient_descent(init_samples, model, batch_size=args.batch_size, max_steps=100)
-    surf_samples = sample_iso(init_samples, model, batch_size=args.batch_size, max_steps=10)
+    surf_samples = sample_iso(init_samples, model, iso=args.iso, batch_size=args.batch_size, max_steps=10)
     M.mesh.save(point_cloud_from_array(surf_samples),"output/surface_samples.obj")

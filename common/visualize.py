@@ -45,7 +45,7 @@ def point_cloud_from_arrays(*args) -> M.mesh.PointCloud:
     return pc
 
 
-def render_sdf_2d(render_path, contour_path, gradient_path, model, domain : M.geometry.BB2D, device, res=800, batch_size=1000):
+def render_sdf_2d(render_path, contour_path, gradient_path, model, domain : M.geometry.BB2D, device, res=1000, batch_size=1000):
     
     X = np.linspace(domain.left, domain.right, res)
     resY = round(res * domain.height/domain.width)
