@@ -32,7 +32,22 @@ def pseudo_surface_from_polyline(pl):
     bary1 = M.Vec(bary.x, bary.y, 100)
     bary2 = M.Vec(bary.x, bary.y, -100)
     V = list(pl.vertices)+[bary1,bary2]
-    F = [(a,b,nv) for (a,b) in pl.edges]+[(b,a,nv+1) for (a,b) in pl.edges]
+    F = []
+    for a,b in pl.edges:
+        if a==0 and b==len(pl.edges)-1:
+            ### last edge (n-1, 0) is oriented backwards
+            F += [(b,a,nv), (a,b,nv+1)]
+        else:
+            F += [(a,b,nv), (b,a,nv+1)]
+    
+    ### Correctly orient normals outward
+    ref = M.Vec(-1., 0., 0.) # point outside of the mesh
+    volume = 0.
+    for (A,B,C) in F:
+        pA,pB,pC = V[A], V[B], V[C]
+        volume += geom.det_3x3(pB-pA, ref-pA, pC-pA)
+    if volume<0:
+        F = [(b,a,c) for (a,b,c) in F] # change order of faces
     return np.array(V), np.array(F, dtype=int)
 
 if __name__ == "__main__":
@@ -63,6 +78,7 @@ if __name__ == "__main__":
 
     domain = M.geometry.BB2D.of_mesh(mesh, padding=0.5)
     V,F = pseudo_surface_from_polyline(mesh)
+    M.mesh.save(M.mesh.from_arrays(V,F=F), "inputs/pseudo_surface.mesh")
 
     arrays_to_save = dict()
     mesh_to_save = dict() # if args.visu
@@ -85,13 +101,15 @@ if __name__ == "__main__":
             X_on,_ = sample_points_and_normals(mesh, args.n_train//20)
             mult = 10
             ok = False
-            while not ok:
+            n_ok = 0
+            while not ok and n_ok<2:
                 X_other = M.sampling.sample_bounding_box_2D(domain, mult*args.n_train)[:,:2]
                 Y_other,_,_ = signed_distance(np.pad(X_other, ((0,0), (0,1))), V, F)
                 X_in = X_other[Y_other<-1e-3, :][:args.n_train]
                 X_out = X_other[Y_other>1e-2, :][:args.n_train]
                 ok = (X_in.shape[0] == args.n_train and X_out.shape[0] == args.n_train)
                 mult *= 5
+                n_ok += 1
             X_in = np.concatenate((X_on,X_in))[:X_out.shape[0],:]
             np.random.shuffle(X_in)
             print(f" | Generated {X_in.shape[0]} (inside), {X_out.shape[0]} (outside)")
