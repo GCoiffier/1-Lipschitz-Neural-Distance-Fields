@@ -12,6 +12,21 @@ import triangle
 from common.visualize import point_cloud_from_array, point_cloud_from_arrays, vector_field_from_array
 
 def extract_train_point_cloud(n_pts, V,N,A, domain, t_in=0., t_out=0.):
+    """Sample a point cloud in a given domain and partition it using the generalized winding number.
+    Half the points are taken in a tighter domain around the point cloud.
+
+    Args:
+        n_pts (int): number of points to sample
+        V (np.ndarray): vertices of the point cloud (shape Nx3)
+        N (np.ndarray): normal vectors per vertex (shape Nx3)
+        A (np.ndarray): local area per vertex (shape Nx1)
+        domain (M.geometry.BB3D): axis-aligned domain inside which points are uniformly sampled
+        t_in (float, optional): GWN threshold for inside points. Samples are kept if GWN >= t_in. Defaults to 0..
+        t_out (float, optional): GWN threshold for outside points. Samples are kept if GWN <= t_out. Defaults to 0..
+
+    Returns:
+        X_in, X_out: two arrays of 'n_pts/2' points that are inside and outside the input point cloud.
+    """
     t_in = max(0., t_in)
     domain.pad(0.05,0.05,0.05)
     X_1 = M.sampling.sample_bounding_box_3D(domain, 20*args.n_train)
@@ -29,9 +44,20 @@ def extract_train_point_cloud(n_pts, V,N,A, domain, t_in=0., t_out=0.):
     return X_in, X_out
 
 def estimate_normals(V):
+    """TODO"""
     raise NotImplementedError
 
 def estimate_vertex_areas(V,N, k=20):
+    """The generalized winding number needs an estimate of 'local areas' of each points. This functions computes this area estimation as described in the article of Barill et al. (2018).
+
+    Args:
+        V (np.ndarray): array of vertex positions (Nx3)
+        N (np.ndarray): array of normal vector per vertex (Nx3)
+        k (int, optional): number of neighbor vertices to take into account for computation. Defaults to 20.
+
+    Returns:
+        np.ndarray: array of estimated local areas (Nx1)
+    """
     n_pts = V.shape[0]
     KNN_mat = kneighbors_graph(V,k,mode="connectivity")
     KNN = [[] for _ in range(n_pts)]
@@ -56,11 +82,14 @@ def estimate_vertex_areas(V,N, k=20):
     return A
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        prog="Dataset Generator",
+        description="Generate a dataset to train a neural distance field from a point cloud with normals"
+    )
 
     parser.add_argument("input", type=str, help="path to the input point cloud")
-    parser.add_argument("-mode", "--mode", default="signed", choices=["signed", "unsigned"])
-    parser.add_argument("-no", "--n-train", type=int, default=100_000)
+    parser.add_argument("-mode", "--mode", default="signed", choices=["signed", "unsigned"], help="dataset mode. 'signed' runs the generalized winding number to label points as inside/outside. 'unsigned' labels points as boundary/else.")
+    parser.add_argument("-no", "--n-train", type=int, default=100_000, help="number of samples in the training set")
     parser.add_argument("-visu", help="generates visualization point cloud", action="store_true")
     parser.add_argument("-ti", "--threshold-in", type=float, default=0., help="keep interior if WN is > 0.5+t. Ignored in unsigned mode")
     parser.add_argument("-to", "--threshold-out", type=float, default=0., help="keep exterior if WN is < 0.5-t. Ignored in unsigned mode")
@@ -78,6 +107,8 @@ if __name__ == "__main__":
     if pc.vertices.has_attribute("normals"):
         N = pc.vertices.get_attribute("normals").as_array(len(pc.vertices))
     else:
+        print("No normals founds for the point cloud. Exiting.")
+        exit()
         print("Estimate normals")
         N = estimate_normals(Vtx)
         N_attr = pc.vertices.get_attribute("normals", float, 3, dense=True)

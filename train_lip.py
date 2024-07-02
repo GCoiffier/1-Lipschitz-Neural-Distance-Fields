@@ -17,15 +17,18 @@ from common.callback import *
 if __name__ == "__main__":
 
     #### Commandline ####
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        prog="Training of a 1-Lipschitz architecture",
+        description="This scripts runs the training optimization of a 1-Lipschitz neural network on some precomputed point cloud dataset."
+    )
 
     # dataset parameters
     parser.add_argument("dataset", type=str, help="name of the dataset to train on")
     parser.add_argument("-o", "--output-name", type=str, default="", help="custom output folder name")
-    parser.add_argument("--unsigned", action="store_true", help="flag for training an unsigned distance field")
+    parser.add_argument("--unsigned", action="store_true", help="flag for training an unsigned distance field instead of a signed one")
 
     # model parameters
-    parser.add_argument("-model","--model", choices=["ortho", "sll"], default="sll", help="Lipschitz architecture")
+    parser.add_argument("-model","--model", choices=["ortho", "sll"], default="sll", help="Which Lipschitz architecture to consider. 'SLL' is the one used in the paper. 'Ortho' is the Bjorck orthonormalization-based architecture of Anil et al. (2019)")
     parser.add_argument("-n-layers", "--n-layers", type=int, default=20, help="number of layers in the network")
     parser.add_argument("-n-hidden", "--n-hidden", type=int, default=128, help="size of the layers")
 

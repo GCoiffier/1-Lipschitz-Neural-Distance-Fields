@@ -6,7 +6,7 @@ import numpy as np
 from numpy.random import choice
 import argparse
 from scipy.spatial import KDTree
-from common.visualize import point_cloud_from_array, point_cloud_from_arrays, vector_field_from_array
+from common.visualize import point_cloud_from_array, point_cloud_from_arrays
 
 def sample_points(mesh, n_pts):
     sampled_pts = np.zeros((n_pts, 3))
@@ -24,12 +24,15 @@ def sample_points(mesh, n_pts):
     return sampled_pts
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        prog="Dataset Generator",
+        description="Generate a 3D dataset from a 3D polyline. Only outputs a dataset for an unsigned distance field."
+    )
 
     parser.add_argument("input_mesh", type=str, \
         help="path to the input mesh")
-    parser.add_argument("-no", "--n-train", type=int, default=10000)
-    parser.add_argument("-nt", "--n-test",  type=int, default=3000)
+    parser.add_argument("-no", "--n-train", type=int, default=10000, help="number of samples in the training dataset")
+    parser.add_argument("-nt", "--n-test",  type=int, default=3000, help="number of samples in the testing dataset.")
     parser.add_argument("-visu", help="generates visualization point cloud", action="store_true")
     args = parser.parse_args()
 

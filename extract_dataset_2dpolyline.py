@@ -8,17 +8,26 @@ import argparse
 from igl import signed_distance
 from common.visualize import point_cloud_from_array, point_cloud_from_arrays, vector_field_from_array
 
-def sample_points_and_normals(mesh, n_pts):
+def sample_points_and_normals(polyline, n_pts):
+    """Sample points on a polyline along with their normal vectors
+
+    Args:
+        polyline (M.mesh.PolyLine): input polyline
+        n_pts (int): number of points to sample
+
+    Returns:
+        array,array: array of point coordinates (n_pts x 2) and normals (n_pts x 2)
+    """
     sampled_pts = np.zeros((n_pts, 2))
-    lengths = M.attributes.edge_length(mesh, persistent=False).as_array()
+    lengths = M.attributes.edge_length(polyline, persistent=False).as_array()
     lengths /= np.sum(lengths)
-    if len(mesh.edges)==1:
+    if len(polyline.edges)==1:
         edges = [0]*n_pts
     else:
-        edges = choice(len(mesh.edges), size=n_pts, p=lengths)
+        edges = choice(len(polyline.edges), size=n_pts, p=lengths)
     sampled_normals = np.zeros((n_pts,2))
     for i,e in enumerate(edges):
-        pA,pB = (mesh.vertices[_v] for _v in mesh.edges[e])
+        pA,pB = (polyline.vertices[_v] for _v in polyline.edges[e])
         ni = M.Vec.normalized(pB - pA)
         sampled_normals[i,:] = np.array([ni.y, -ni.x])
         t = np.random.random()
@@ -27,6 +36,14 @@ def sample_points_and_normals(mesh, n_pts):
     return sampled_pts, sampled_normals
 
 def pseudo_surface_from_polyline(pl):
+    """The signed distance function of libigl only works in 3D. Since I am too lazy to code an equivalent function for 2D inputs, this function transforms the 2D polyline into a 3D surface by linking each edge (a,b) to two far away points Z+ and Z- to form two triangles.
+
+    Args:
+        pl (M.mesh.PolyLine): input polyline
+
+    Returns:
+        M.mesh.SurfaceMesh: Extruded surface
+    """
     nv = len(pl.vertices)
     bary = M.attributes.barycenter(pl)
     bary1 = M.Vec(bary.x, bary.y, 100)
@@ -50,15 +67,19 @@ def pseudo_surface_from_polyline(pl):
         F = [(b,a,c) for (a,b,c) in F] # change order of faces
     return np.array(V), np.array(F, dtype=int)
 
+
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        prog="Dataset Generator",
+        description="Generate a 2D dataset from a 2D polyline"
+    )
 
     parser.add_argument("input_mesh", type=str, \
-        help="path to the input mesh")
-    parser.add_argument("-mode", "--mode", default="signed", choices=["signed", "unsigned", "dist", "sal"])
-    parser.add_argument("-n", "--n-train", type=int, default=10000)
-    parser.add_argument("-nt", "--n-test",  type=int, default=3000)
-    parser.add_argument("-nti", "--n-test-boundary", type=int, default=1000)
+        help="path to the input polyline")
+    parser.add_argument("-mode", "--mode", default="signed", choices=["signed", "unsigned", "dist", "sal"], help="which type of dataset to generate. 'signed' for inside/outside labelling. 'unsigned' for boundary/else labelling. 'dist' to also compute the true signed distance from the polyline. 'sal' samples points for the signed-agnostic distance function of Atzmon and Lipman.")
+    parser.add_argument("-n", "--n-train", type=int, default=10_000, help="number of samples in the training set")
+    parser.add_argument("-nt", "--n-test",  type=int, default=3000, help="number of samples in the test set")
+    parser.add_argument("-nti", "--n-test-boundary", type=int, default=1000, help="number of samples in the test set that are _on_ the polyline.")
     parser.add_argument("-visu", help="generates visualization point cloud", action="store_true")
     args = parser.parse_args()
 

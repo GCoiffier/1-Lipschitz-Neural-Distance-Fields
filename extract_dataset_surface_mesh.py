@@ -46,17 +46,19 @@ def extract_train_point_cloud_distances(n_surf, n_pt, mesh, domain):
     return np.concatenate((X_out,X_on)), np.concatenate((Y_out, np.zeros(X_on.shape[0])))
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        prog="Dataset Generator",
+        description="Generate a dataset to train a neural distance field from a surface mesh"
+    )
 
-    parser.add_argument("input_mesh", type=str, \
-        help="path to the input mesh")
-    parser.add_argument("-mode", "--mode", default="signed", choices=["signed", "unsigned", "dist", "sal"])
-    parser.add_argument("-no", "--n-train", type=int, default=100_000)
-    parser.add_argument("-ni", "--n-boundary", type=int, default=10_000)
-    parser.add_argument("-nt", "--n-test",  type=int, default=10_000)
-    parser.add_argument("-nti", "--n-test-boundary", type=int, default=2000)
+    parser.add_argument("input_mesh", type=str, help="path to the input mesh")
+    parser.add_argument("-mode", "--mode", default="signed", choices=["signed", "unsigned", "dist", "sal"], help="which type of dataset to generate. 'signed' for inside/outside labelling. 'unsigned' for boundary/else labelling. 'dist' to also compute the true signed distance from the mesh. 'sal' samples points for the signed-agnostic distance function of Atzmon and Lipman.")
+    parser.add_argument("-no", "--n-train", type=int, default=100_000, help="number of sampled point in training dataset.")
+    parser.add_argument("-ni", "--n-boundary", type=int, default=10_000, help="number of points in the training dataset to sample _on_ the surface.")
+    parser.add_argument("-nt", "--n-test",  type=int, default=10_000, help="number of points in the test dataset.")
+    parser.add_argument("-nti", "--n-test-boundary", type=int, default=2000, help="number of points in the set dataset that are sampled _on_ the surface.")
     parser.add_argument("-visu", help="generates visualization point cloud", action="store_true")
-    parser.add_argument("--importance-sampling", help="Importance sampling in the dist mode. Ignored in other modes", action="store_true")
+    parser.add_argument("--importance-sampling", help="Importance sampling. Will only keep points near the 0 isosurface", action="store_true")
     args = parser.parse_args()
 
     os.makedirs("inputs", exist_ok=True)
@@ -80,7 +82,6 @@ if __name__ == "__main__":
                 mask = np.logical_and(Y_out1 > 0.2, Y_out1 < 0.3)
                 X_out1 = X_out1[mask, :]
                 X_on, X_out2 = extract_train_point_cloud_unsigned(args.n_train, mesh, domain)
-                print(X_out1.shape)
                 np.random.shuffle(X_out2)
                 X_out = np.concatenate((X_out1, X_out2))
                 X_out = X_out[:args.n_train,:]
@@ -108,7 +109,6 @@ if __name__ == "__main__":
                 print(f"Generated: on {X_on.shape[0]}, out {X_out.shape[0]}, in {X_in.shape[0]}")
             else:
                 X_on, N, X_in, X_out = extract_train_point_cloud(args.n_boundary, args.n_train, mesh, domain)
-                # X_in = np.concatenate((X_on,X_in))[:X_out.shape[0],:]
             
             arrays_to_save = { "Xtrain_on" : X_on, "Xtrain_in" : X_in, "Xtrain_out" : X_out, "Nrml" : N}
             if args.visu:

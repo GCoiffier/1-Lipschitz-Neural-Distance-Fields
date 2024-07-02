@@ -14,17 +14,19 @@ from common.training import Trainer
 from common.utils import get_device, get_BB
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        prog="Training of a regular neural distance field",
+        description="This scripts runs the training optimization of a regular neural network on some precomputed point cloud dataset with associated distances."
+    )
     
     # dataset parameters
-    parser.add_argument("dataset", type=str)
-    parser.add_argument("-o", "--output-name", type=str, default="")
-    parser.add_argument("--unsigned", type=str, default="")
+    parser.add_argument("dataset", type=str, help="name of the dataset to train on")
+    parser.add_argument("-o", "--output-name", type=str, default="", help="custom output folder name")
 
     # model parameters
-    parser.add_argument("-model", "--model", choices=["mlp", "siren", "ortho", "sll"], default="mlp")
-    parser.add_argument("-n-layers", "--n-layers", type=int, default=8)
-    parser.add_argument("-n-hidden", "--n-hidden", type=int, default=32)
+    parser.add_argument("-model", "--model", choices=["mlp", "siren", "ortho", "sll"], default="mlp", help="Network architecture to consider. 1-Lipschitz architectures are also available")
+    parser.add_argument("-n-layers", "--n-layers", type=int, default=8, help="number of layers in the network")
+    parser.add_argument("-n-hidden", "--n-hidden", type=int, default=32, help="size of each layers in the network")
 
     # optimization parameters
     parser.add_argument("-ne", "--epochs", type=int, default=200, help="Number of epochs")
