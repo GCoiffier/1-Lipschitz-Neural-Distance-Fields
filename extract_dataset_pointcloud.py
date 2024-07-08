@@ -3,20 +3,36 @@ import mouette as M
 import os
 import numpy as np
 import argparse
+from collections import deque
 from tqdm import trange
 
 from igl import fast_winding_number_for_points
-from sklearn.neighbors import kneighbors_graph
+from scipy.spatial import KDTree
 import triangle
 
 from common.visualize import point_cloud_from_array, point_cloud_from_arrays, vector_field_from_array
 
 def extract_train_point_cloud(n_pts, V,N,A, domain, t_in=0., t_out=0.):
+    """Sample a point cloud in a given domain and partition it using the generalized winding number.
+    Half the points are taken in a tighter domain around the point cloud.
+
+    Args:
+        n_pts (int): number of points to sample
+        V (np.ndarray): vertices of the point cloud (shape Nx3)
+        N (np.ndarray): normal vectors per vertex (shape Nx3)
+        A (np.ndarray): local area per vertex (shape Nx1)
+        domain (M.geometry.AABB): axis-aligned domain inside which points are uniformly sampled
+        t_in (float, optional): GWN threshold for inside points. Samples are kept if GWN >= t_in. Defaults to 0..
+        t_out (float, optional): GWN threshold for outside points. Samples are kept if GWN <= t_out. Defaults to 0..
+
+    Returns:
+        X_in, X_out: two arrays of 'n_pts/2' points that are inside and outside the input point cloud.
+    """
     t_in = max(0., t_in)
-    domain.pad(0.05,0.05,0.05)
-    X_1 = M.sampling.sample_bounding_box_3D(domain, 20*args.n_train)
-    domain.pad(0.95,0.95,0.95)
-    X_2 = M.sampling.sample_bounding_box_3D(domain, args.n_train//2)
+    domain.pad(0.05)
+    X_1 = M.sampling.sample_AABB(domain, 20*args.n_train)
+    domain.pad(0.95)
+    X_2 = M.sampling.sample_AABB(domain, args.n_train//2)
     X_other = np.concatenate((X_1, X_2))
     WN = fast_winding_number_for_points(V,N,A, X_other)
     print("WN:",np.min(WN), np.max(WN))
@@ -28,17 +44,63 @@ def extract_train_point_cloud(n_pts, V,N,A, domain, t_in=0., t_out=0.):
     X_in = X_in[:n_pts]
     return X_in, X_out
 
-def estimate_normals(V):
-    raise NotImplementedError
+def estimate_normals(V, tree:KDTree, k=30):
+    """Estimation of outward normals for each vertex of the point cloud. Computed as a linear regression on k nearest neighbors
 
-def estimate_vertex_areas(V,N, k=20):
+    Args:
+        V (np.ndarray): array of vertex positions (Nx3)
+        tree (KDTree): kdtree for fast neighbor queries
+        k (int, optional): number of neighbor vertices to take into account for computation. Defaults to 30.
+
+    Returns:
+        np.ndarray: array of estimated normals (Nx3)
+    """
     n_pts = V.shape[0]
-    KNN_mat = kneighbors_graph(V,k,mode="connectivity")
-    KNN = [[] for _ in range(n_pts)]
-    rows, cols = KNN_mat.nonzero()
-    for r,c in zip(rows,cols):
-        KNN[r].append(c)
-    KNN = np.array(KNN)
+    _, KNN = tree.query(V, k+1)
+    KNN = KNN[:,1:] # remove self from nearest
+    
+    # Compute normals
+    N = np.zeros((n_pts, 3))
+    for i in trange(n_pts):
+        mat_i = np.array([V[nn,:]-V[i,:] for nn in KNN[i,:]])
+        mat_i = mat_i.T @ mat_i
+        _, eigs = np.linalg.eigh(mat_i)
+        N[i,:] = eigs[:,0]
+
+    # Consistent normal orientation
+    visited = np.zeros(n_pts,dtype=bool)
+    to_visit = deque()
+    exterior_pt = M.Vec(10,0,0)
+    _,top_pt = tree.query(exterior_pt)
+    if np.dot(N[i,:], exterior_pt - V[top_pt,:])<0.:
+        N[i,:] *= -1 # if this normal is not outward, we are doomed
+    to_visit.append(top_pt)
+    while len(to_visit)>0:
+        iv = to_visit.popleft()
+        if visited[iv] : continue
+        visited[iv] = True
+        Nv = N[iv, :]
+        for nn in KNN[iv,:]:
+            if np.dot(Nv, N[nn,:])<0.:
+                N[nn,:] *= -1
+            to_visit.append(nn)
+    return N
+
+def estimate_vertex_areas(V,N, tree:KDTree, k=10):
+    """The generalized winding number needs an estimate of 'local areas' of each points. This functions computes this area estimation as described in the article of Barill et al. (2018).
+
+    Args:
+        V (np.ndarray): array of vertex positions (Nx3)
+        N (np.ndarray): array of normal vector per vertex (Nx3)
+        tree (KDTree): kdtree for fast neighbor queries
+        k (int, optional): number of neighbor vertices to take into account for computation. Defaults to 20.
+
+    Returns:
+        np.ndarray: array of estimated local areas (Nx1)
+    """
+    n_pts = V.shape[0]
+    _, KNN = tree.query(V,k+1)
+    KNN = KNN[:,1:]
     A = np.zeros(n_pts)
     for i in trange(n_pts):
         ni = M.Vec.normalized(N[i])
@@ -56,13 +118,16 @@ def estimate_vertex_areas(V,N, k=20):
     return A
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        prog="Dataset Generator",
+        description="Generate a dataset to train a neural distance field from a point cloud with normals"
+    )
 
     parser.add_argument("input", type=str, help="path to the input point cloud")
-    parser.add_argument("-mode", "--mode", default="signed", choices=["signed", "unsigned"])
-    parser.add_argument("-no", "--n-train", type=int, default=100_000)
+    parser.add_argument("-mode", "--mode", default="signed", choices=["signed", "unsigned"], help="dataset mode. 'signed' runs the generalized winding number to label points as inside/outside. 'unsigned' labels points as boundary/else.")
+    parser.add_argument("-no", "--n-train", type=int, default=100_000, help="number of samples in the training set")
     parser.add_argument("-visu", help="generates visualization point cloud", action="store_true")
-    parser.add_argument("-ti", "--threshold-in", type=float, default=0., help="keep interior if WN is > 0.5+t. Ignored in unsigned mode")
+    parser.add_argument("-ti", "--threshold-in", type=float, default=0.5, help="keep interior if WN is > 0.5+t. Ignored in unsigned mode")
     parser.add_argument("-to", "--threshold-out", type=float, default=0., help="keep exterior if WN is < 0.5-t. Ignored in unsigned mode")
     args = parser.parse_args()
 
@@ -70,25 +135,32 @@ if __name__ == "__main__":
 
     print("Load mesh")
     pc = M.mesh.load(args.input)
+
     pc = M.transform.fit_into_unit_cube(pc)
     pc = M.transform.translate(pc, -np.mean(pc.vertices, axis=0))
-    domain = M.geometry.BB3D.of_mesh(pc)
+    domain = M.geometry.AABB.of_mesh(pc)
     Vtx = np.array(pc.vertices)
+
+    if not pc.vertices.has_attribute("normals") or not pc.vertices.has_attribute("area"):
+        # precompute kdtree once
+        kdtree = KDTree(pc.vertices)
 
     if pc.vertices.has_attribute("normals"):
         N = pc.vertices.get_attribute("normals").as_array(len(pc.vertices))
     else:
         print("Estimate normals")
-        N = estimate_normals(Vtx)
-        N_attr = pc.vertices.get_attribute("normals", float, 3, dense=True)
-    
+        N = estimate_normals(Vtx, kdtree)
+        pc.vertices.register_array_as_attribute("normals", N)
+        if args.visu:
+            poly_normals = vector_field_from_array(Vtx, N, 0.01)
+            M.mesh.save(poly_normals, f"inputs/normals.mesh")
+
     if pc.vertices.has_attribute("area"):
         A = pc.vertices.get_attribute("area").as_array(len(pc.vertices))
     else:
         print("Estimate vertex local area")
-        A = estimate_vertex_areas(Vtx,N)
-        A_attr = pc.vertices.create_attribute("area", float, dense=True)
-        A_attr._data = A[:,np.newaxis]
+        A = estimate_vertex_areas(Vtx, N, kdtree)
+        pc.vertices.register_array_as_attribute("area", A)
 
     if args.visu:
         file_name = M.utils.get_filename(args.input)
@@ -98,17 +170,16 @@ if __name__ == "__main__":
     mesh_to_save = dict()
     arrays_to_save = {
         "Xtrain_on" : Vtx,
-        "Nrml" : N 
     }
     match args.mode:
         case "unsigned":
             n_pts = Vtx.shape[0]
             n_pts_large = n_pts//4
             n_pts_tight = n_pts - n_pts_large
-            domain.pad(0.05,0.05,0.05)
-            X_out1 = M.sampling.sample_bounding_box_3D(domain, n_pts_tight)
-            domain.pad(0.95,0.95,0.95)
-            X_out2 = M.sampling.sample_bounding_box_3D(domain, n_pts_large)
+            domain.pad(0.05)
+            X_out1 = M.sampling.sample_AABB(domain, n_pts_tight)
+            domain.pad(0.95)
+            X_out2 = M.sampling.sample_AABB(domain, n_pts_large)
             X_out = np.concatenate((X_out1, X_out2))
             arrays_to_save["Xtrain_out"] = X_out
             if args.visu:

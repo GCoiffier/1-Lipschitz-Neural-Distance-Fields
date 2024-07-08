@@ -287,18 +287,21 @@ def generate_segment_distances(n_train, n_on, n_test):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-
+    parser = argparse.ArgumentParser(
+        prog="Toy dataset generator",
+        description="Generates simple datasets for which the true SDF is known in order to test the neural distance field training code"
+    )
+    
     parser.add_argument("which", type=str,
-        choices=["square", "circle", "segment"])
+        choices=["square", "circle", "segment"], help="which dataset to generate. 'segment' is not available in signed mode.")
 
-    parser.add_argument("-mode", "--mode", choices=["signed", "unsigned", "dist"], default="signed")
+    parser.add_argument("-mode", "--mode", choices=["signed", "unsigned", "dist"], default="signed", help="which type of dataset to generate. 'signed' for inside/outside labelling. 'unsigned' for boundary/else labelling. 'dist' to generate the true distance")
 
     parser.add_argument("-no", "--n-train", type=int, default=20000,
         help="number of sample points in inside and outside distributions")
 
     parser.add_argument("-ni", "--n-surface", type=int, default=10000, 
-        help="number of points on the surface. Ignored in no-interior mode")
+        help="number of points on the surface. Ignored in unsigned mode")
 
     parser.add_argument("-nt", "--n-test", type=int, default=1000, \
         help="number of sample points in test set")
@@ -330,7 +333,7 @@ if __name__ == "__main__":
         case "signed":
             X_in,X_out,X_on,N,X_test,Y_test = {
                 "square" : generate_square,
-                "circle" : generate_circle
+                "circle" : generate_circle,
             }[args.which](args.n_train, args.n_surface, args.n_test)
             arrays_to_save = {
                 f"inputs/{args.which}_Xtrain_in.npy" : X_in,

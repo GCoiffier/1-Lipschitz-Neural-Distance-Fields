@@ -3,22 +3,24 @@ import mouette as M
 import torch
 import matplotlib.pyplot as plt
 import matplotlib.colors as colors
-from torch.utils.data import TensorDataset, DataLoader
-from tqdm import tqdm
 from skimage.measure import marching_cubes
 
 from .utils import forward_in_batches
 
 def point_cloud_from_array(X, D=None):
-    pc = M.mesh.PointCloud()
-    if X.shape[1]==2:
-        X = np.pad(X, ((0,0),(0,1)))
-    pc.vertices += list(X)
+    pc = M.mesh.from_arrays(X)
     if D is not None:
-        attr = pc.vertices.create_attribute("dist", float, dense=True)
-        attr._data = D.reshape((D.shape[0], 1))
+        pc.vertices.register_array_as_attribute("dist",D)
     return pc
 
+def point_cloud_from_arrays(*args) -> M.mesh.PointCloud:
+    clouds, labels = [], []
+    for pts,label in args:
+        clouds.append(point_cloud_from_array(pts))
+        labels.append(np.full(pts.shape[0], fill_value=label))
+    pc = M.mesh.merge(clouds)
+    pc.vertices.register_array_as_attribute("label", np.concatenate(labels))
+    return pc
 
 def vector_field_from_array(pos, vec, scale=1.) -> M.mesh.PolyLine:
     pl = M.mesh.RawMeshData()
@@ -34,22 +36,24 @@ def vector_field_from_array(pos, vec, scale=1.) -> M.mesh.PolyLine:
     return M.mesh.PolyLine(pl)
 
 
-def point_cloud_from_arrays(*args) -> M.mesh.PointCloud:
-    clouds, labels = [], []
-    for pts,label in args:
-        clouds.append(point_cloud_from_array(pts))
-        labels.append(np.full(pts.shape[0], fill_value=label))
-    pc = M.mesh.merge(clouds)
-    label_attr = pc.vertices.create_attribute("label", float, dense=True)
-    label_attr._data = np.concatenate(labels)[:, np.newaxis]
-    return pc
+def render_sdf_2d(render_path, contour_path, gradient_path, model, domain : M.geometry.AABB, device, res=1000, batch_size=1000):
+    """ Renders a 2D SDF
 
+    Args:
+        render_path (str): Path to export a color render
+        contour_path (str): Path to export the contour plot
+        gradient_path (str): Path to export the gradient norm plot
+        model : SDF neural model
+        domain (M.geometry.AABB): axis aligned bounding box of dimension 2to represent the plotting domain.
+        device (str): cpu or cuda
+        res (int, optional): Image resolution. Defaults to 800.
+        batch_size (int, optional): Size of forward batches. Defaults to 1000.        
+    """
+    assert domain.dim == 2
 
-def render_sdf_2d(render_path, contour_path, gradient_path, model, domain : M.geometry.BB2D, device, res=1000, batch_size=1000):
-    
-    X = np.linspace(domain.left, domain.right, res)
-    resY = round(res * domain.height/domain.width)
-    Y = np.linspace(domain.bottom, domain.top, resY)
+    X = np.linspace(domain.mini[0], domain.maxi[0], res)
+    resY = round(res * domain.span[1]/domain.span[0])
+    Y = np.linspace(domain.mini[1], domain.maxi[1], resY)
 
     pts = np.hstack((np.meshgrid(X,Y))).swapaxes(0,1).reshape(2,-1).T
     if gradient_path is not None:
@@ -100,6 +104,21 @@ def render_sdf_2d(render_path, contour_path, gradient_path, model, domain : M.ge
         plt.savefig(gradient_path, bbox_inches='tight', pad_inches=0)
 
 def render_sdf_quad(render_path, contour_path, gradient_path, model, P0, P1, P2, device, res=800, batch_size=1000):
+    """
+    Renders a 3D sdf along a specified (planar) quad in space.
+
+    Args:
+        render_path (str): Path to export a color render
+        contour_path (str): Path to export the contour plot
+        gradient_path (str): Path to export the gradient norm plot
+        model : SDF neural model
+        P0 (array): First point of the quad ( (0,0) in parameter space)
+        P1 (array): Second point of the quad ( (1,0) in parameter space)
+        P2 (array): Thirs point of the quad ( (0,1) in parameter space)
+        device (str): cpu or cuda
+        res (int, optional): Image resolution. Defaults to 800.
+        batch_size (int, optional): Size of forward batches. Defaults to 1000.
+    """
     
     dx = P1 - P0
     dy = P2 - P0
@@ -180,7 +199,7 @@ def reconstruct_surface_marching_cubes(model, domain, device, iso=0, res=100, ba
     if isinstance(iso, (int,float)): iso = [iso]
     
     ### Feed grid to model
-    L = [np.linspace(domain.min_coords[i], domain.max_coords[i], res) for i in range(3)]
+    L = [np.linspace(domain.mini[i], domain.maxi[i], res) for i in range(3)]
     pts = np.hstack((np.meshgrid(*L))).swapaxes(0,1).reshape(3,-1).T
     dist_values = forward_in_batches(model, pts, device, compute_grad=False, batch_size=batch_size)
     dist_values = dist_values.reshape((res,res,res))

@@ -1,5 +1,8 @@
+numpy<2
 libigl
-cgal-bindings
-numba
 torch
 deel-torchlip
+mouette==1.2.2
+scipy
+scikit-learn
+skimage

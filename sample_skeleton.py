@@ -7,13 +7,15 @@ import argparse
 import mouette as M
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        prog='Skeleton Sampler',
+        description='Sample points that are near the skeleton of a 1-Lipschitz implicit neural network')
 
-    parser.add_argument("model", type=str)
+    parser.add_argument("model", type=str, help="path to the model '.pt' file")
     parser.add_argument("-o", "--output-name", type=str, default="", help="output name")
-    parser.add_argument("-res", '--res', type=int, default=300)
-    parser.add_argument("-cpu", action="store_true")
-    parser.add_argument("-bs", "--batch-size", type=int, default=10_000)
+    parser.add_argument("-res", '--res', type=int, default=300, help="resolution of the grid to sample")
+    parser.add_argument("-cpu", action="store_true", help="force cpu compute")
+    parser.add_argument("-bs", "--batch-size", type=int, default=10_000, help="batch size")
     args = parser.parse_args()
 
     device = get_device(args.cpu)

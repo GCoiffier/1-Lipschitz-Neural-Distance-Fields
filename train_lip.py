@@ -17,35 +17,32 @@ from common.callback import *
 if __name__ == "__main__":
 
     #### Commandline ####
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        prog="Training of a 1-Lipschitz architecture",
+        description="This scripts runs the training optimization of a 1-Lipschitz neural network on some precomputed point cloud dataset."
+    )
 
     # dataset parameters
-    parser.add_argument("dataset", type=str)
-    parser.add_argument("-o", "--output-name", type=str, default="")
-    parser.add_argument("--unsigned", action="store_true")
+    parser.add_argument("dataset", type=str, help="name of the dataset to train on")
+    parser.add_argument("-o", "--output-name", type=str, default="", help="custom output folder name")
+    parser.add_argument("--unsigned", action="store_true", help="flag for training an unsigned distance field instead of a signed one")
 
     # model parameters
-    parser.add_argument("-model","--model", choices=["ortho", "sll"], default="sll")
-    parser.add_argument("-n-layers", "--n-layers", type=int, default=20)
-    parser.add_argument("-n-hidden", "--n-hidden", type=int, default=128)
+    parser.add_argument("-model","--model", choices=["ortho", "sll"], default="sll", help="Which Lipschitz architecture to consider. 'SLL' is the one used in the paper. 'Ortho' is the Bjorck orthonormalization-based architecture of Anil et al. (2019)")
+    parser.add_argument("-n-layers", "--n-layers", type=int, default=20, help="number of layers in the network")
+    parser.add_argument("-n-hidden", "--n-hidden", type=int, default=128, help="size of the layers")
 
     # optimization parameters
-    parser.add_argument("-ne", "--epochs", type=int, default=200, help="Number of epochs")
-    parser.add_argument('-bs',"--batch-size", type=int, default=200, help="Batch size")
-    parser.add_argument("-tbs", "--test-batch-size", type = int, default = 5000, help="Batch size on test set")
+    parser.add_argument("-ne", "--epochs", type=int, default=200, help="Number of training epochs")
+    parser.add_argument('-bs',"--batch-size", type=int, default=200, help="Train batch size")
+    parser.add_argument("-tbs", "--test-batch-size", type = int, default = 5000, help="Test batch size")
     parser.add_argument("-lr", "--learning-rate", type=float, default=5e-4, help="Adam's learning rate")
-    parser.add_argument("-lm", "--loss-margin", type=float, default=1e-2)
-    parser.add_argument("-lmbd", "--loss-lambda", type=float, default=100.)
-    
-    parser.add_argument("-whkr", "--hkr-weight", type=float, default=1., help='weight for hKR loss')
-    parser.add_argument("-wa", "--attach-weight", type=float, default=0., help="weight for fitting loss. Has no effect if --unsigned")
-    parser.add_argument("-wn", "--normal-weight", type=float, default=0., help="weigt for normal reconstruction loss. Has no effect if --unsigned")
-    parser.add_argument("-weik", "--eikonal-weight", type = float, default=0., help="weight for eikonal loss")
-    parser.add_argument("-wgnorm", "--gnorm-weight", type = float, default=0., help="weight for max gradient norm loss")
+    parser.add_argument("-lm", "--loss-margin", type=float, default=1e-2, help="margin m in the hKR loss")
+    parser.add_argument("-lmbd", "--loss-lambda", type=float, default=100., help="lambda in the hKR loss")
     
     # misc
-    parser.add_argument("-cp", "--checkpoint-freq", type=int, default=10)
-    parser.add_argument("-cpu", action="store_true")
+    parser.add_argument("-cp", "--checkpoint-freq", type=int, default=10, help="Number of epochs between each model save")
+    parser.add_argument("-cpu", action="store_true", help="force training on CPU")
     args = parser.parse_args()
 
     #### Config ####
@@ -58,11 +55,6 @@ if __name__ == "__main__":
         test_batch_size = args.test_batch_size,
         loss_margin = args.loss_margin,
         loss_regul = args.loss_lambda,
-        hkr_weight = args.hkr_weight,
-        attach_weight = args.attach_weight,
-        normal_weight = args.normal_weight,
-        eikonal_weight = args.eikonal_weight,
-        gnorm_weight = args.gnorm_weight,
         optimizer = "adam",
         learning_rate = args.learning_rate,
         output_folder = os.path.join("output", args.output_name if len(args.output_name)>0 else args.dataset)
@@ -82,34 +74,11 @@ if __name__ == "__main__":
         X_train_out = torch.Tensor(X_train_out).to(config.device)
         loader_out = DataLoader(TensorDataset(X_train_out), batch_size=config.batch_size, shuffle=True)
 
-        X_train_on = np.load(os.path.join("inputs", f"{args.dataset}_Xtrain_on.npy"))
-        X_train_on = torch.Tensor(X_train_on).to(config.device)
-        ratio = X_train_in.shape[0]//X_train_on.shape[0]
-        
-        Normals = None
-        if config.normal_weight>0. and os.path.exists(normal_path := os.path.join("inputs", f"{args.dataset}_Nrml.npy")):
-            Normals = np.load(normal_path)
-            Normals = torch.Tensor(Normals).to(config.device)
-        elif config.normal_weight>0. :
-            print("No normals found. Removing normal reconstruction loss")
-            config.normal_weight = 0.
-        
-        if Normals is None or (not config.normal_weight>0.):
-            loader_bd = DataLoader(TensorDataset(X_train_on), batch_size=config.batch_size//ratio, shuffle=True)
-        else:
-            loader_bd = DataLoader(TensorDataset(X_train_on, Normals), batch_size=config.batch_size//ratio, shuffle=True)
-
         print(f"Succesfully loaded train set:\n", 
               f"Inside: {X_train_in.shape}\n", 
-              f"Outside: {X_train_out.shape}\n",
-              f"Surface: {X_train_on.shape}")
-        if Normals is not None:
-            print(f"Normals: {Normals.shape}")
-        
+              f"Outside: {X_train_out.shape}")
+ 
     else: # UNSIGNED MODE
-        # Attach and normal losses are not supported in unsigned mode
-        config.attach_weight = 0.
-        config.normal_weight = 0.
         X_train_on = np.load(os.path.join("inputs", f"{args.dataset}_Xtrain_on.npy"))
         X_train_on = torch.Tensor(X_train_on).to(config.device)
         loader_on = DataLoader(TensorDataset(X_train_on), batch_size=config.batch_size, shuffle=True)
@@ -145,8 +114,7 @@ if __name__ == "__main__":
     if config.signed:
         pc = point_cloud_from_arrays(
             (X_train_in.detach().cpu(), -1.),
-            (X_train_out.detach().cpu(), 1.),
-            (X_train_on.detach().cpu(), 0.)
+            (X_train_out.detach().cpu(), 1.)
         )
     else:
         pc = point_cloud_from_arrays(
@@ -160,7 +128,7 @@ if __name__ == "__main__":
     callbacks.append(LoggerCB(os.path.join(config.output_folder, "log.csv")))
     if config.checkpoint_freq>0:
         callbacks.append(CheckpointCB([x for x in range(0, config.n_epochs, config.checkpoint_freq) if x>0]))
-        plot_domain = get_BB(X_train_on, DIM, pad=0.5)
+        plot_domain = get_BB(X_train_on if args.unsigned else X_train_in, DIM, pad=0.5)  
         if DIM==2:
             callbacks.append(Render2DCB(config.output_folder, config.checkpoint_freq, plot_domain, res=500))
         else:
@@ -168,7 +136,7 @@ if __name__ == "__main__":
     callbacks.append(UpdateHkrRegulCB({1 : 1., 10 : 10., 20: 100., 30: config.loss_regul}))
     
     if config.signed:
-        trainer = Trainer((loader_in, loader_out, loader_bd), test_loader, config)
+        trainer = Trainer((loader_in, loader_out), test_loader, config)
         trainer.add_callbacks(*callbacks)
         trainer.train_lip(model)
     else:

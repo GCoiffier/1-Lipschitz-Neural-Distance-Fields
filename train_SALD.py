@@ -21,25 +21,25 @@ SAL: Sign Agnostic Learning of Shapes from Raw Data
 if __name__ == "__main__":
 
     #### Commandline ####
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        prog="SALD trainer",
+        description="Reimplementation of the Signed-Agnostic distance function learning of Atzmon and Lipman"
+    )
 
     # dataset parameters
-    parser.add_argument("dataset", type=str)
+    parser.add_argument("dataset", type=str, help="Name of the dataset to consider. Should have been generated using the 'sal' mode of the dataset extraction scripts.")
     parser.add_argument("-o", "--output-name", type=str, default="")
 
     # model parameters
-    parser.add_argument("-model", "--model", choices=["mlp", "siren", "ortho", "sll"], default="mlp")
-    parser.add_argument("-n-layers", "--n-layers", type=int, default=8)
-    parser.add_argument("-n-hidden", "--n-hidden", type=int, default=32)
+    parser.add_argument("-model", "--model", choices=["mlp", "siren", "ortho", "sll"], default="mlp", help="Network architecture to consider. 1-Lipschitz architectures are also available")
+    parser.add_argument("-n-layers", "--n-layers", type=int, default=8, help="number of layers in the network")
+    parser.add_argument("-n-hidden", "--n-hidden", type=int, default=32, help="size of each layers in the network")
 
     # optimization parameters
     parser.add_argument("-ne", "--epochs", type=int, default=200, help="Number of epochs")
     parser.add_argument('-bs',"--batch-size", type=int, default=100, help="Batch size")
     parser.add_argument("-tbs", "--test-batch-size", type = int, default = 5000, help="Batch size on test set")
-    parser.add_argument("--metric", choices=["l0", "l2"], default="l2")
-
-    parser.add_argument("-wa", "--attach-weight", type=float, default=0.)
-    parser.add_argument("-wg", "--grad-weight", type=float, default=0.1)
+    parser.add_argument("--metric", choices=["l0", "l2"], default="l2", help="norm to consider for the SAL learning")
     
     # misc
     parser.add_argument("-cp", "--checkpoint-freq", type=int, default=10)
@@ -62,8 +62,6 @@ if __name__ == "__main__":
     )
     os.makedirs(config.output_folder, exist_ok=True)
     print("DEVICE:", config.device)
-
-    DIM : int = None
 
     #### Load train set ####
     X_train_out = np.load(os.path.join("inputs", f"{args.dataset}_Xtrain_out.npy"))
@@ -96,7 +94,7 @@ if __name__ == "__main__":
         test_loader = DataLoader(TensorDataset(X_test, Y_test), batch_size=config.test_batch_size)
         print(f"Succesfully loaded test set: {X_test.shape}\n")
 
-    DIM = X_train_out.shape[ 1] # dimension of the dataset (2 or 3)
+    DIM : int = X_train_out.shape[1] # dimension of the dataset (2 or 3)
 
     #### Create model
     model = select_model(

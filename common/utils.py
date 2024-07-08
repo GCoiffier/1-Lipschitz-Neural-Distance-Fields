@@ -22,13 +22,9 @@ def get_BB(X, dim, pad=0.):
         BoundingBox
     """
     vmin = torch.min(X, dim=0)[0].cpu()
-    vmax = torch.max(X, dim=0)[0].cpu() 
-    if dim == 2:
-        bb = M.geometry.BB2D(float(vmin[0]), float(vmin[1]), float(vmax[0]), float(vmax[1]))
-        bb.pad(pad,pad)
-    elif dim == 3:
-        bb = M.geometry.BB3D(*vmin, *vmax)
-        bb.pad(pad,pad,pad)
+    vmax = torch.max(X, dim=0)[0].cpu()
+    bb = M.geometry.AABB(vmin.numpy(), vmax.numpy())
+    bb.pad(pad)
     return bb
 
 

@@ -14,25 +14,26 @@ from common.training import Trainer
 from common.utils import get_device, get_BB
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        prog="Training of a regular neural distance field",
+        description="This scripts runs the training optimization of a regular neural network on some precomputed point cloud dataset with associated distances."
+    )
     
     # dataset parameters
-    parser.add_argument("dataset", type=str)
-    parser.add_argument("-o", "--output-name", type=str, default="")
-    parser.add_argument("--unsigned", type=str, default="")
+    parser.add_argument("dataset", type=str, help="name of the dataset to train on")
+    parser.add_argument("-o", "--output-name", type=str, default="", help="custom output folder name")
 
     # model parameters
-    parser.add_argument("-model", "--model", choices=["mlp", "siren", "ortho", "sll"], default="mlp")
-    parser.add_argument("-n-layers", "--n-layers", type=int, default=8)
-    parser.add_argument("-n-hidden", "--n-hidden", type=int, default=32)
+    parser.add_argument("-model", "--model", choices=["mlp", "siren", "ortho", "sll"], default="mlp", help="Network architecture to consider. 1-Lipschitz architectures are also available")
+    parser.add_argument("-n-layers", "--n-layers", type=int, default=10, help="number of layers in the network")
+    parser.add_argument("-n-hidden", "--n-hidden", type=int, default=128, help="size of each layers in the network")
 
     # optimization parameters
     parser.add_argument("-ne", "--epochs", type=int, default=200, help="Number of epochs")
     parser.add_argument('-bs',"--batch-size", type=int, default=200, help="Batch size")
     parser.add_argument("-lr", "--learning-rate", type=float, default=5e-4, help="Adam's learning rate")
     parser.add_argument("-tbs", "--test-batch-size", type = int, default = 5000, help="Batch size on test set")
-    parser.add_argument("-weik", "--eikonal-weight", type = float, default=0., help="weight for eikonal loss")
-    parser.add_argument("-wtv", "--total-variation-weight", type = float, default=0., help="weight for total variation loss")
+    parser.add_argument("-weik", "--eikonal-weight", type = float, default=0.1, help="weight for eikonal loss")
 
     # misc
     parser.add_argument("-cp", "--checkpoint-freq", type=int, default=10)
@@ -47,7 +48,6 @@ if __name__ == "__main__":
         batch_size = args.batch_size,
         test_batch_size = args.test_batch_size,
         eikonal_weight = args.eikonal_weight,
-        tv_weight = args.total_variation_weight,
         optimizer = "adam",
         learning_rate = args.learning_rate,
         output_folder = os.path.join("output", args.output_name if len(args.output_name)>0 else args.dataset)
@@ -79,7 +79,6 @@ if __name__ == "__main__":
 
     #### Create model and setup trainer
     model = select_model(args.model, DIM, args.n_layers, args.n_hidden).to(config.device)
-    # model = select_model(args.model, DIM, args.n_layers, args.n_hidden, final_activ=torch.nn.Tanh).to(config.device)
     print("MODEL", model)
     print("PARAMETERS:", count_parameters(model))
 
@@ -92,7 +91,7 @@ if __name__ == "__main__":
             plot_domain = get_BB(X_train, DIM)
             callbacks.append(Render2DCB(config.output_folder, config.checkpoint_freq, plot_domain, res=1000))
         else:
-            plot_domain = M.geometry.BB3D(-1,-1,-1,1,1,1)
+            plot_domain = M.geometry.AABB((-1,-1,-1),(1,1,1))
             callbacks.append(MarchingCubeCB(config.output_folder, config.checkpoint_freq, plot_domain, res=100, iso=0))
 
     trainer.add_callbacks(*callbacks)

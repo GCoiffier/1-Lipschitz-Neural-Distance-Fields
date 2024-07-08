@@ -76,22 +76,6 @@ class CheckpointCB(Callback):
             path = os.path.join(trainer.config.output_folder, name)
             save_model(model, path)
 
-
-class ComputeSingularValuesCB(Callback):
-
-    def __init__(self, freq):
-        self.freq = freq
-
-    def callOnEndTrain(self, trainer, model):
-        epoch = trainer.metrics["epoch"]
-        if self.freq>0 and epoch%self.freq==0:
-            singular_values = parameter_singular_values(model)
-            print("Singular values:")
-            for sv in singular_values:
-                print(sv)
-            print()
-
-
 class Render2DCB(Callback):
 
     def __init__(self, save_folder, freq, plot_domain, res=800, output_contours=True, output_gradient_norm=True):

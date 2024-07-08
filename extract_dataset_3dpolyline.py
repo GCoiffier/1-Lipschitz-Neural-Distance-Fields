@@ -6,7 +6,7 @@ import numpy as np
 from numpy.random import choice
 import argparse
 from scipy.spatial import KDTree
-from common.visualize import point_cloud_from_array, point_cloud_from_arrays, vector_field_from_array
+from common.visualize import point_cloud_from_array, point_cloud_from_arrays
 
 def sample_points(mesh, n_pts):
     sampled_pts = np.zeros((n_pts, 3))
@@ -24,12 +24,15 @@ def sample_points(mesh, n_pts):
     return sampled_pts
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser(
+        prog="Dataset Generator",
+        description="Generate a 3D dataset from a 3D polyline. Only outputs a dataset for an unsigned distance field."
+    )
 
-    parser.add_argument("input_mesh", type=str, \
-        help="path to the input mesh")
-    parser.add_argument("-no", "--n-train", type=int, default=10000)
-    parser.add_argument("-nt", "--n-test",  type=int, default=3000)
+    parser.add_argument("input_mesh", type=str, help="path to the input polyline")
+    parser.add_argument("-mode", "--mode", default="unsigned", choices=["unsigned", "dist"], help="which type of dataset to generate. 'unsigned' for boundary/other labelling. 'dist' to also compute the true signed distance from the mesh.")
+    parser.add_argument("-no", "--n-train", type=int, default=50_000, help="number of samples in the training dataset")
+    parser.add_argument("-nt", "--n-test",  type=int, default=10_000, help="number of samples in the testing dataset.")
     parser.add_argument("-visu", help="generates visualization point cloud", action="store_true")
     args = parser.parse_args()
 
@@ -46,28 +49,54 @@ if __name__ == "__main__":
     elif isinstance(input_mesh, M.mesh.PolyLine):
         mesh = input_mesh
 
-    domain = M.geometry.BB3D.of_mesh(mesh)
+    domain = M.geometry.AABB.of_mesh(mesh)
     arrays_to_save = dict()
     mesh_to_save = dict() # if args.visu
 
     print("Generate train set")
     print(" | Sampling points")
-    X_on  = sample_points(mesh, args.n_train)
-    X_out1 = M.sampling.sample_bounding_box_3D(domain, 4*args.n_train//5)
-    domain.pad(0.5, 0.5, 0.5)
-    X_out2 = M.sampling.sample_bounding_box_3D(domain, args.n_train - 4*args.n_train//5)
-    X_out = np.concatenate((X_out1, X_out2))
-    np.random.shuffle(X_out)
-    print(f" | Generated {X_on.shape[0]} (on), {X_out.shape[0]} (outside)")
-    arrays_to_save["Xtrain_on"] = X_on
-    arrays_to_save["Xtrain_out"] = X_out
-    if args.visu:
-        mesh_to_save["pts_on"] = point_cloud_from_array(X_on)
-        mesh_to_save["pts_train"] = point_cloud_from_arrays((X_on, -1), (X_out, 1))
+    tree = None
+    match args.mode:
+        
+        case "unsigned":
+            X_on  = sample_points(mesh, args.n_train)
+            X_out1 = M.sampling.sample_AABB(domain, 4*args.n_train//5)
+            domain.pad(0.5)
+            X_out2 = M.sampling.sample_AABB(domain, args.n_train - 4*args.n_train//5)
+            X_out = np.concatenate((X_out1, X_out2))
+            np.random.shuffle(X_out)
+            print(f" | Generated {X_on.shape[0]} (on), {X_out.shape[0]} (outside)")
+            arrays_to_save["Xtrain_on"] = X_on
+            arrays_to_save["Xtrain_out"] = X_out
+            if args.visu:
+                mesh_to_save["pts_on"] = point_cloud_from_array(X_on)
+                mesh_to_save["pts_train"] = point_cloud_from_arrays((X_on, -1), (X_out, 1))
+
+        case "dist":
+            X_on  = sample_points(mesh, args.n_train//10)
+            tree = KDTree(np.concatenate((mesh.vertices, X_on)))
+
+            n_train_other = args.n_train - X_on.shape[0]
+
+            X_out1 = M.sampling.sample_AABB(domain, n_train_other//2)
+            Y_out1,_ = tree.query(X_out1, workers=-1)
+    
+            domain.pad(0.5)
+            X_out2 = M.sampling.sample_AABB(domain, n_train_other - n_train_other//2)
+            Y_out2,_ = tree.query(X_out2, workers=-1)
+
+            X_train = np.concatenate((X_on, X_out1, X_out2))
+            Y_train = np.concatenate((np.zeros(X_on.shape[0]), Y_out1, Y_out2))
+
+            print(f" | Generated {X_train.shape[0]} points")
+            arrays_to_save["Xtrain"] = X_train
+            arrays_to_save["Ytrain"] = Y_train
+            if args.visu:
+                mesh_to_save["pts_train"] = point_cloud_from_array(X_train,Y_train)
 
     print("Generate test set")
-    X_test = M.sampling.sample_bounding_box_3D(domain, args.n_test)
-    tree = KDTree(np.concatenate((mesh.vertices, X_on)))
+    X_test = M.sampling.sample_AABB(domain, args.n_test)
+    if tree is None: tree = KDTree(np.concatenate((mesh.vertices, X_on))) # tree already computed in dist mode
     Y_test,_ = tree.query(X_test, workers=-1)
     arrays_to_save["Xtest"] = X_test
     arrays_to_save["Ytest"] = Y_test
