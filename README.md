@@ -11,7 +11,6 @@ This repository contains the code accompanying our SGP 2024 publication _1-Lipsc
 - [deel-torchlip](https://github.com/deel-ai/deel-torchlip) (implementation of some Lipschitz neural architectures)
 - [mouette](https://github.com/GCoiffier/mouette) (our mesh utility library in python)
 - scipy (use of a KD-tree)
-- scikit-learn (for k-nearest neighbors searches)
 - skimage (for marching squares and marching cubes algorithms)
 
 All dependencies can be installed using pip : `pip3 install -r requirements.txt`

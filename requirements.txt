@@ -4,5 +4,4 @@ torch
 deel-torchlip
 mouette==1.2.2
 scipy
-scikit-learn
 skimage
