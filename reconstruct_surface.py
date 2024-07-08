@@ -31,7 +31,7 @@ if __name__ == "__main__":
         args.isovalues = np.linspace(-0.1,0.1,21)
 
     sdf = load_model(args.model, device)
-    domain = M.geometry.BB3D(-1, -1, -1, 1, 1, 1)
+    domain = M.geometry.AABB((-1, -1, -1), (1, 1, 1))
     res = args.resolution
     meshes = reconstruct_surface_marching_cubes(sdf, domain, device, args.isovalues, args.resolution, args.batch_size)
     for (n,off),mesh in meshes.items():

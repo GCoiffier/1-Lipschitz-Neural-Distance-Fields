@@ -97,9 +97,11 @@ if __name__ == "__main__":
     elif isinstance(input_mesh, M.mesh.PolyLine):
         mesh = input_mesh
 
-    domain = M.geometry.BB2D.of_mesh(mesh, padding=0.5)
+    mesh_points = np.array(mesh.vertices)[:,:2] # extract x and y coordinates
+    domain = M.geometry.AABB.of_points(mesh_points, padding=0.5)
     V,F = pseudo_surface_from_polyline(mesh)
-    M.mesh.save(M.mesh.from_arrays(V,F=F), "inputs/pseudo_surface.mesh")
+    if args.visu:
+        M.mesh.save(M.mesh.from_arrays(V,F=F), "inputs/pseudo_surface.mesh")
 
     arrays_to_save = dict()
     mesh_to_save = dict() # if args.visu
@@ -110,7 +112,7 @@ if __name__ == "__main__":
 
         case "unsigned":
             X_on, _ = sample_points_and_normals(mesh, args.n_train)
-            X_out = M.sampling.sample_bounding_box_2D(domain, args.n_train)[:,:2]
+            X_out = M.sampling.sample_AABB(domain, args.n_train)
             print(f" | Generated {X_on.shape[0]} (on), {X_out.shape[0]} (outside)")
             arrays_to_save["Xtrain_on"] = X_on
             arrays_to_save["Xtrain_out"] = X_out
@@ -124,7 +126,7 @@ if __name__ == "__main__":
             ok = False
             n_ok = 0
             while not ok and n_ok<2:
-                X_other = M.sampling.sample_bounding_box_2D(domain, mult*args.n_train)[:,:2]
+                X_other = M.sampling.sample_AABB(domain, mult*args.n_train)
                 Y_other,_,_ = signed_distance(np.pad(X_other, ((0,0), (0,1))), V, F)
                 X_in = X_other[Y_other<-1e-3, :][:args.n_train]
                 X_out = X_other[Y_other>1e-2, :][:args.n_train]
@@ -141,20 +143,21 @@ if __name__ == "__main__":
 
         case "dist":
             X_on, N = sample_points_and_normals(mesh, args.n_train//20)
-            X_out = M.sampling.sample_bounding_box_2D(domain,args.n_train)[:,:2]
+            X_out = M.sampling.sample_AABB(domain,args.n_train)
             Y_out,_,_ = signed_distance(np.pad(X_out, ((0,0), (0,1))), V, F)
             X_train = np.concatenate((X_on, X_out))[:args.n_train,:]
-            Y_train = np.concatenate((np.zeros(X_on.shape[0], Y_out)))[:args.n_train,:]
+            Y_train = np.concatenate((np.zeros(X_on.shape[0]), Y_out))[:args.n_train]
             arrays_to_save["Xtrain"] = X_train
             arrays_to_save["Ytrain"] = Y_train
             if args.visu:
                 mesh_to_save["pts_train"] = point_cloud_from_array(X_train, Y_train)
 
         case "sal":
-            X_on, Nrml = sample_points_and_normals(mesh, args.n_boundary)
-            X, _ = sample_points_and_normals(mesh, args.n_train//2)
-            Z1 = X + np.random.normal(0., 1e-2, size = (args.n_train//2, 2))
-            Z2 = X + np.random.normal(0., 0.2, size = (args.n_train//2, 2))
+            X_on, Nrml = sample_points_and_normals(mesh, args.n_train//20)
+            n_train_other = args.n_train - args.n_train//20
+            X, _ = sample_points_and_normals(mesh, n_train_other//2)
+            Z1 = X + np.random.normal(0., 1e-2, size = (n_train_other//2, 2))
+            Z2 = X + np.random.normal(0., 0.2, size = (n_train_other//2, 2))
             Z = np.concatenate((Z1,Z2))
             Y,_,_ = signed_distance(np.pad(Z, ((0,0), (0,1))), V,F)
             Y = abs(Y)
@@ -168,7 +171,7 @@ if __name__ == "__main__":
                 mesh_to_save["normals"] = vector_field_from_array(X_on,Nrml,0.1)
 
     print("Generate test set")
-    X_test = M.sampling.sample_bounding_box_2D(domain, args.n_test)
+    X_test = M.sampling.sample_AABB(domain, args.n_test)
     X_test_on, _ = sample_points_and_normals(mesh, args.n_test_boundary)
     Y_test,_,_ = signed_distance(np.pad(X_test, ((0,0), (0,1))), V,F)
     if args.mode in ["unsigned", "sal"]:

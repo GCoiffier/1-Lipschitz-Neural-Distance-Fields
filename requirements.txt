@@ -2,7 +2,7 @@ numpy<2
 libigl
 torch
 deel-torchlip
-mouette
+mouette==1.2.2
 scipy
 scikit-learn
 skimage

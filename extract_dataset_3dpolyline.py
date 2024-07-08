@@ -49,7 +49,7 @@ if __name__ == "__main__":
     elif isinstance(input_mesh, M.mesh.PolyLine):
         mesh = input_mesh
 
-    domain = M.geometry.BB3D.of_mesh(mesh)
+    domain = M.geometry.AABB.of_mesh(mesh)
     arrays_to_save = dict()
     mesh_to_save = dict() # if args.visu
 
@@ -60,9 +60,9 @@ if __name__ == "__main__":
         
         case "unsigned":
             X_on  = sample_points(mesh, args.n_train)
-            X_out1 = M.sampling.sample_bounding_box_3D(domain, 4*args.n_train//5)
-            domain.pad(0.5, 0.5, 0.5)
-            X_out2 = M.sampling.sample_bounding_box_3D(domain, args.n_train - 4*args.n_train//5)
+            X_out1 = M.sampling.sample_AABB(domain, 4*args.n_train//5)
+            domain.pad(0.5)
+            X_out2 = M.sampling.sample_AABB(domain, args.n_train - 4*args.n_train//5)
             X_out = np.concatenate((X_out1, X_out2))
             np.random.shuffle(X_out)
             print(f" | Generated {X_on.shape[0]} (on), {X_out.shape[0]} (outside)")
@@ -78,11 +78,11 @@ if __name__ == "__main__":
 
             n_train_other = args.n_train - X_on.shape[0]
 
-            X_out1 = M.sampling.sample_bounding_box_3D(domain, n_train_other//2)
+            X_out1 = M.sampling.sample_AABB(domain, n_train_other//2)
             Y_out1,_ = tree.query(X_out1, workers=-1)
     
-            domain.pad(0.5, 0.5, 0.5)
-            X_out2 = M.sampling.sample_bounding_box_3D(domain, n_train_other - n_train_other//2)
+            domain.pad(0.5)
+            X_out2 = M.sampling.sample_AABB(domain, n_train_other - n_train_other//2)
             Y_out2,_ = tree.query(X_out2, workers=-1)
 
             X_train = np.concatenate((X_on, X_out1, X_out2))
@@ -95,7 +95,7 @@ if __name__ == "__main__":
                 mesh_to_save["pts_train"] = point_cloud_from_array(X_train,Y_train)
 
     print("Generate test set")
-    X_test = M.sampling.sample_bounding_box_3D(domain, args.n_test)
+    X_test = M.sampling.sample_AABB(domain, args.n_test)
     if tree is None: tree = KDTree(np.concatenate((mesh.vertices, X_on))) # tree already computed in dist mode
     Y_test,_ = tree.query(X_test, workers=-1)
     arrays_to_save["Xtest"] = X_test
