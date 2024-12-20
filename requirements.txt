@@ -6,3 +6,4 @@ mouette==1.2.2
 scipy
 scikit-image
 matplotlib
+triangle
