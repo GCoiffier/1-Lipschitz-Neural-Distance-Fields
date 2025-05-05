@@ -6,12 +6,13 @@ This repository contains the code accompanying our SGP 2024 publication _1-Lipsc
 
 ## Dependencies
 - numpy
+- scipy (use of a KD-tree)
 - torch 
 - [libigl](https://libigl.github.io/) (implementation of signed distance for meshes and generalized winding number) 
 - [deel-torchlip](https://github.com/deel-ai/deel-torchlip) (implementation of some Lipschitz neural architectures)
 - [mouette](https://github.com/GCoiffier/mouette) (our mesh utility library in python)
-- scipy (use of a KD-tree)
-- skimage (for marching squares and marching cubes algorithms)
+- [skimage](https://scikit-image.org/docs/stable/api/skimage.html) (for marching squares and marching cubes algorithms)
+- [triangle](https://pypi.org/project/triangle/) (for computing the approximate local area needed for the generalized winding number)
 
 All dependencies can be installed using pip : `pip3 install -r requirements.txt`
 
