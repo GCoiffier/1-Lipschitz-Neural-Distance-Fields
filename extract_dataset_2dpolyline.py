@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
     if isinstance(input_mesh, M.mesh.SurfaceMesh):
         print("Extract boundary polyline")
-        mesh, _ = M.processing.extract_curve_boundary(input_mesh)
+        mesh, _ = M.processing.extract_boundary_of_surface(input_mesh)
     elif isinstance(input_mesh, M.mesh.PolyLine):
         mesh = input_mesh
 

@@ -7,7 +7,7 @@ from igl import fast_winding_number_for_meshes, signed_distance
 from common.visualize import point_cloud_from_array, point_cloud_from_arrays, vector_field_from_array
 
 def extract_train_point_cloud(n_surf, n_train, mesh, domain):
-    X_bd, N_bd = M.sampling.sample_points_from_surface(mesh, n_surf, return_normals=True)
+    X_bd, N_bd = M.sampling.sample_surface(mesh, n_surf, return_normals=True)
     domain.pad(0.05)
     X_other1 = M.sampling.sample_AABB(domain, 200*n_train)
     domain.pad(0.95)
@@ -22,7 +22,7 @@ def extract_train_point_cloud(n_surf, n_train, mesh, domain):
     return X_bd, N_bd, X_in, X_out
 
 def extract_train_point_cloud_unsigned(n_pt, mesh, domain):
-    X_on = M.sampling.sample_points_from_surface(mesh, n_pt)
+    X_on = M.sampling.sample_surface(mesh, n_pt)
     domain.pad(0.05)
     X_out1 = M.sampling.sample_AABB(domain, n_pt//2)
     domain.pad(0.95)
@@ -33,7 +33,7 @@ def extract_train_point_cloud_unsigned(n_pt, mesh, domain):
 
 def extract_train_point_cloud_distances(n_surf, n_pt, mesh, domain):
     print(" | Sample points on surface")
-    X_on = M.sampling.sample_points_from_surface(mesh, n_surf)
+    X_on = M.sampling.sample_surface(mesh, n_surf)
     print(" | Sample uniform distribution in domain")
     domain.pad(0.05)
     X_out1 = M.sampling.sample_AABB(domain, n_pt - n_pt//10)
@@ -97,7 +97,7 @@ if __name__ == "__main__":
         case "signed":
             if args.importance_sampling:          
                 BETA = 30
-                X_on, N = M.sampling.sample_points_from_surface(mesh, args.n_boundary, return_normals=True)
+                X_on, N = M.sampling.sample_surface(mesh, args.n_boundary, return_normals=True)
                 X_u, Y_u = extract_train_point_cloud_distances(10, 20*args.n_train, mesh, domain)            
                 weight = np.exp(-BETA*abs(Y_u))
                 weight /= np.sum(weight)
@@ -119,7 +119,7 @@ if __name__ == "__main__":
         case "dist":
             if args.importance_sampling:          
                 BETA = 30
-                X_on = M.sampling.sample_points_from_surface(mesh, args.n_boundary)
+                X_on = M.sampling.sample_surface(mesh, args.n_boundary)
                 X_u, Y_u = extract_train_point_cloud_distances(10, 10*args.n_train, mesh, domain)            
                 weight = np.exp(-BETA*abs(Y_u))
                 weight /= np.sum(weight)
@@ -133,7 +133,7 @@ if __name__ == "__main__":
                 mesh_to_save["pts_train"] = point_cloud_from_array(X_train,Y_train)
 
         case "sal":
-            X_on,Nrml = M.sampling.sample_points_from_surface(mesh, args.n_boundary, return_normals=True)
+            X_on,Nrml = M.sampling.sample_surface(mesh, args.n_boundary, return_normals=True)
             X_train, Y_train = extract_train_point_cloud_distances(100, args.n_train, mesh, domain)
             arrays_to_save = {
                 "Xtrain_out" : X_train,
@@ -147,7 +147,7 @@ if __name__ == "__main__":
 
     print("\nGenerate test set")
     print(" | Sampling points on surface")
-    X_surf_test = M.sampling.sample_points_from_surface(mesh, args.n_test_boundary)
+    X_surf_test = M.sampling.sample_surface(mesh, args.n_test_boundary)
     print(" | Sampling uniform distribution in domain")
     test_bb = M.geometry.AABB.of_mesh(mesh,padding=0.1)
     X_other_test1 = M.sampling.sample_AABB(test_bb, args.n_test//2)

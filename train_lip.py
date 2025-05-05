@@ -134,6 +134,7 @@ if __name__ == "__main__":
         else:
             callbacks.append(MarchingCubeCB(config.output_folder, config.checkpoint_freq, plot_domain, res=100, iso=0))
     callbacks.append(UpdateHkrRegulCB({1 : 1., 5 : 10., 10: 100., 30: config.loss_regul}))
+    # callbacks.append(UpdateHkrRegulCB({1 : config.loss_regul}))
     
     if config.signed:
         trainer = Trainer((loader_in, loader_out), test_loader, config)

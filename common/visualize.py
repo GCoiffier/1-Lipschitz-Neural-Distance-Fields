@@ -103,7 +103,7 @@ def render_sdf_2d(render_path, contour_path, gradient_path, model, domain : M.ge
         plt.colorbar(pos)
         plt.savefig(gradient_path, bbox_inches='tight', pad_inches=0)
 
-def render_sdf_quad(render_path, contour_path, gradient_path, model, P0, P1, P2, device, res=800, batch_size=1000):
+def render_sdf_quad(render_path, contour_path, gradient_path, model, P0, P1, P2, device, res=800, batch_size=1000, **kwargs):
     """
     Renders a 3D sdf along a specified (planar) quad in space.
 
@@ -165,9 +165,9 @@ def render_sdf_quad(render_path, contour_path, gradient_path, model, P0, P1, P2,
         plt.axis("off")
         # cs = plt.contourf(X,-Y,img, levels=np.linspace(-0.1,0.1,11), cmap="seismic", extend="both")
         # cs.changed()
-        plt.contour(img, levels=16, colors='k', linestyles="solid", linewidths=0.3)
-        plt.contour(img, levels=[0.], colors='k', linestyles="solid", linewidths=0.6)
-        plt.savefig(contour_path, bbox_inches='tight', pad_inches=0, dpi=200)
+        plt.contour(img, levels=kwargs.get("n_levels", 16), colors='k', linestyles="solid", linewidths=0.5)
+        plt.contour(img, levels=[kwargs.get("zero_contour_offset", 0.)], colors='k', linestyles="solid", linewidths=0.6)
+        plt.savefig(contour_path, bbox_inches='tight', pad_inches=0, dpi=kwargs.get("dpi", 500))
 
     if gradient_path is not None:
         grad_norms = np.linalg.norm(grad_values,axis=1)

@@ -30,15 +30,16 @@ if __name__ == "__main__":
 
     if len(args.output_name)==0:
         args.output_name = args.model.split("/")[-1].split(".pt")[0]
-    if args.range: args.offset = np.linspace(-0.1,0.1,21)
+    if args.range: args.isovalues = np.linspace(-0.1,0.1,41)
 
     sdf = load_model(args.model, device)
 
-    domain = M.geometry.BB2D(-1, -1, 1, 1)
+    domain = M.geometry.AABB((-1., -1.), (1., 1.))
+    domain.pad(0.5)
     resX = args.resolution
-    resY = round(resX * domain.height/domain.width)
-    X = np.linspace(domain.left, domain.right, resX)
-    Y = np.linspace(domain.bottom, domain.top, resY)
+    resY = round(resX * domain.span.y/domain.span.x)
+    X = np.linspace(domain.mini.x, domain.maxi.x, resX)
+    Y = np.linspace(domain.mini.y, domain.maxi.y, resY)
     pts = np.hstack((np.meshgrid(X,Y))).swapaxes(0,1).reshape(2,-1).T
     pts = torch.Tensor(pts).to(device)
     pts = DataLoader(TensorDataset(pts), batch_size=args.batch_size)
@@ -54,7 +55,7 @@ if __name__ == "__main__":
 
     if args.merge:
         PL = M.mesh.PolyLine()
-        iso = PL.vertices.create_attribute("iso", float)
+        iso_attr = PL.vertices.create_attribute("iso", float)
         id_cnt = 0
         for iso in args.isovalues:
             contours = find_contours(img, level=iso)
@@ -69,7 +70,7 @@ if __name__ == "__main__":
                     vy = (1-dy)*Y[py] + dy * Y[py+1]
                     PL.vertices.append([vx, vy, 0.])
                     PL.edges.append(sorted((id_cnt+id_v+i, id_cnt+id_v+(i+1)%n_cnt)))
-                    iso[id_cnt + id_v+i] = iso
+                    iso_attr[id_cnt + id_v+i] = iso
                 id_v += n_cnt
             id_cnt += id_v
         M.mesh.save(PL, f"{args.output_name}.mesh")
@@ -92,6 +93,7 @@ if __name__ == "__main__":
                         PL.edges.append(sorted((id_v+i, id_v+(i+1)%n_cnt)))
                     id_v += n_cnt
                     M.mesh.save(PL, f"output/{ioff:02d}_{args.output_name}_{round(100*iso)}.mesh")
-            except ValueError:
+            except ValueError as e:
+                print(e)
                 continue
         

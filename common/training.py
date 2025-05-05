@@ -66,6 +66,7 @@ class Trainer(M.Logger):
             train_loss["hkr"] = 0.
             train_length = len(self.train_loaders[0])
             for (X_in, X_out) in tqdm(zip(*self.train_loaders), total=train_length):
+                if X_in[0].shape != X_out[0].shape: continue
                 self.optimizer.zero_grad() # zero the parameter gradients
                 # forward + backward + optimize
                 Y_in = model(X_in[0]) # forward computation
